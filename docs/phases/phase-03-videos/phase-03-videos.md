@@ -237,7 +237,7 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (sem passar p
 ### SI-03.8 — Endpoint POST /videos
 
 **Route:** POST /videos
-**Test Specs:** _pending /plan-test-specs_
+**Test Specs:** see `nestjs-project/specs/videos-create.plan.md`
 **Authorization:** Authenticated
 
 **Description:** Expõe o início do upload: valida o payload, pré-cadastra o vídeo como rascunho no canal do usuário autenticado e devolve as URLs pré-assinadas das partes (per `### API Contracts → POST /videos`).
@@ -267,7 +267,7 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (sem passar p
 ### SI-03.9 — Endpoint GET /videos/:slug/upload
 
 **Route:** GET /videos/:slug/upload
-**Test Specs:** _pending /plan-test-specs_
+**Test Specs:** see `nestjs-project/specs/videos-upload-status.plan.md`
 **Authorization:** Owner
 
 **Description:** Expõe ao dono o estado do pipeline do vídeo e, enquanto `draft`, os dados de retomada do upload (partes já enviadas + URLs das faltantes) (per `### API Contracts → GET /videos/:slug/upload`).
@@ -295,7 +295,7 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (sem passar p
 ### SI-03.10 — Endpoint POST /videos/:slug/upload/complete
 
 **Route:** POST /videos/:slug/upload/complete
-**Test Specs:** _pending /plan-test-specs_
+**Test Specs:** see `nestjs-project/specs/videos-upload-complete.plan.md`
 **Authorization:** Owner
 
 **Description:** Expõe a conclusão do upload, que fecha o multipart no storage, coloca o vídeo em `processing` e dispara o processamento automático (per `### API Contracts → POST /videos/:slug/upload/complete`).
@@ -415,7 +415,7 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (sem passar p
 ### SI-03.14 — Endpoint GET /videos/:slug
 
 **Route:** GET /videos/:slug
-**Test Specs:** _pending /plan-test-specs_
+**Test Specs:** see `nestjs-project/specs/videos-get.plan.md`
 **Authorization:** Anonymous
 
 **Description:** Expõe publicamente, pela URL única, os metadados de um vídeo `ready` com a URL pré-assinada do thumbnail (per `### API Contracts → GET /videos/:slug`).
@@ -447,7 +447,7 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (sem passar p
 ### SI-03.15 — Endpoint GET /videos/:slug/stream
 
 **Route:** GET /videos/:slug/stream
-**Test Specs:** _pending /plan-test-specs_
+**Test Specs:** see `nestjs-project/specs/videos-stream.plan.md`
 **Authorization:** Anonymous
 
 **Description:** Entrega o streaming redirecionando para uma URL pré-assinada de curta duração; o object storage atende requisições `Range` com `206 Partial Content`, então a reprodução começa sem baixar o arquivo inteiro (per `### API Contracts → GET /videos/:slug/stream`).
@@ -478,7 +478,7 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (sem passar p
 ### SI-03.16 — Endpoint GET /videos/:slug/download
 
 **Route:** GET /videos/:slug/download
-**Test Specs:** _pending /plan-test-specs_
+**Test Specs:** see `nestjs-project/specs/videos-download.plan.md`
 **Authorization:** Anonymous
 
 **Description:** Permite ao usuário baixar o vídeo: redireciona para uma URL pré-assinada assinada com `Content-Disposition: attachment`, servida diretamente pelo storage (per `### API Contracts → GET /videos/:slug/download`; AMB-1 clarification).
