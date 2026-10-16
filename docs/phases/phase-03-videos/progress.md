@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 1/17 completed
+**SIs:** 2/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -11,9 +11,11 @@
   - `S3_ACCESS_KEY`/`S3_SECRET_KEY` passaram a ser obrigatórios: `requiredEnv` do teste de schema foi estendido para manter os casos existentes verdes.
 
 ### SI-03.2 — Infra: subir MinIO, Redis e FFmpeg no Docker Compose
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** no tests (Infra) — ACs verificados manualmente: `minio`/`redis` healthy, `minio-init` exit 0 (idempotente em novo `up`), bucket `streamtube` listado via `mc ls`, `ffprobe`/`ffmpeg` 5.1.9 no `nestjs-api`, `maxmemory-policy noeviction`, MinIO `stale_uploads_expiry=24h`
+- **Observations:**
+  - A imagem Chainguard do MinIO roda como não-root e já traz `mc`; o healthcheck usa `mc ready` contra o próprio container. A imagem `minio-client` não tem shell, por isso `minio-init` usa `MC_HOST_local` em vez de `mc alias set`.
+  - No Git Bash do Windows, comandos `docker run` com caminhos absolutos (`/data`) precisam de `MSYS_NO_PATHCONV=1` (conversão automática de caminho).
 
 ### SI-03.3 — Criar StorageModule para multipart, URLs pré-assinadas e objetos
 - **Status:** pending
