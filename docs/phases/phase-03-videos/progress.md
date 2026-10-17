@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 3/17 completed
+**SIs:** 4/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -25,9 +25,12 @@
   - O lint do baseline (Fase 02) já falha com 162 erros em 11 arquivos pré-existentes — fora do escopo deste SI; registrado como bugfix separado (necessário para a DoD). O helper do `env.validation.integration-spec.ts` (estendido no SI-03.1) foi tipado para não vazar `any`.
 
 ### SI-03.4 — Criar entidade Video, VideosModule e migration CreateVideos
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 10/10 passing (video.entity.integration-spec.ts: 7, migrations.integration-spec.ts: 2, videos.module.spec.ts: 1); suíte unit+integração completa 169/169
+- **Observations:**
+  - Migration `1792197432141-CreateVideos` gerada pela CLI e revisada (enum `videos_status_enum`, `UNIQUE(slug)`, índice e FK `channel_id` com `ON DELETE CASCADE`).
+  - Como `Channel` passou a ter o lado inverso `videos`, os 10 testes da Fase 02 que montam `DataSource` com `Channel` precisaram incluir `Video` em `ALL_ENTITIES` (sem isso o TypeORM falha ao construir os metadados da relação). A lista de entidades duplicada em cada teste é candidata a um helper compartilhado — fora do escopo.
+  - O `id` é atribuído pelo serviço antes do insert (a `storage_key` o embute); o teste confirma que o TypeORM persiste o id fornecido mesmo com `@PrimaryGeneratedColumn('uuid')`.
 
 ### SI-03.5 — Pré-cadastrar vídeo como rascunho ao iniciar o upload
 - **Status:** pending
