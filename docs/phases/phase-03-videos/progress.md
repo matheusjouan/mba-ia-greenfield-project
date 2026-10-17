@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 7/17 completed
+**SIs:** 8/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -57,9 +57,11 @@
   - `upload_id` é zerado logo após o `CompleteMultipartUpload` (o upload deixa de existir no storage), inclusive no caminho de tamanho divergente.
 
 ### SI-03.8 — Endpoint POST /videos
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 6/6 passing (test/videos-create.e2e-spec.ts, gerado da spec `specs/videos-create.plan.md`)
+- **Observations:**
+  - Criado `test/helpers/videos-e2e.ts` (bootstrap do `AppModule` com pipe/filtros de `main.ts`, reset de tabelas + throttler, login real via endpoints de auth e PUT direto no storage), reaproveitado pelos specs de vídeo seguintes.
+  - O mapeamento entidade → resposta snake_case fica em métodos estáticos `from()` dos DTOs de resposta, mantendo o controller fino.
 
 ### SI-03.9 — Endpoint GET /videos/:slug/upload
 - **Status:** pending
