@@ -1,12 +1,15 @@
 import { DataSource, EntitySchema, MigrationInterface } from 'typeorm';
 
+// Entity classes are constructors; avoids the unsafe `Function` type.
+type EntityTarget = abstract new (...args: never[]) => unknown;
+
 interface TestDataSourceOptions {
   synchronize?: boolean;
   migrations?: (new () => MigrationInterface)[];
 }
 
 export function createTestDataSource(
-  entities: (Function | string | EntitySchema<any>)[],
+  entities: (EntityTarget | string | EntitySchema<any>)[],
   options: TestDataSourceOptions = {},
 ): DataSource {
   const { synchronize = true, migrations } = options;
