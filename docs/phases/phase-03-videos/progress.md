@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 8/17 completed
+**SIs:** 9/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -64,9 +64,11 @@
   - O mapeamento entidade → resposta snake_case fica em métodos estáticos `from()` dos DTOs de resposta, mantendo o controller fino.
 
 ### SI-03.9 — Endpoint GET /videos/:slug/upload
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 5/5 passing (test/videos-upload-status.e2e-spec.ts, gerado da spec `specs/videos-upload-status.plan.md`)
+- **Observations:**
+  - O cenário 1.2 da spec chega a `processing` chamando `POST /videos/:slug/upload/complete`, endpoint que só existe no SI-03.10 (dependência não capturada no Dependency Map). Para não implementar fora de ordem, o teste usa `VideosService.completeUpload` — a mesma operação de domínio que o endpoint encapsula.
+  - `createVideosE2eApp` passou a aceitar overrides da config de vídeo (`overrideProvider(videoConfig.KEY)`), usado aqui para partes de 5 MiB.
 
 ### SI-03.10 — Endpoint POST /videos/:slug/upload/complete
 - **Status:** pending

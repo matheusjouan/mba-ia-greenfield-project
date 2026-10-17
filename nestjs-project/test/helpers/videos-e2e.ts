@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../../src/app.module';
+import videoConfig from '../../src/config/video.config';
 import { DomainExceptionFilter } from '../../src/common/filters/domain-exception.filter';
 import { ValidationExceptionFilter } from '../../src/common/filters/validation-exception.filter';
 import { MailService } from '../../src/mail/mail.service';
@@ -19,10 +20,15 @@ export interface VideosE2eContext {
 }
 
 /** Boots AppModule with the global pipe/filters that main.ts registers. */
-export async function createVideosE2eApp(): Promise<VideosE2eContext> {
+export async function createVideosE2eApp(
+  videoOverrides: Partial<ReturnType<typeof videoConfig>> = {},
+): Promise<VideosE2eContext> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
-  }).compile();
+  })
+    .overrideProvider(videoConfig.KEY)
+    .useValue({ ...videoConfig(), ...videoOverrides })
+    .compile();
 
   const app = moduleRef.createNestApplication<INestApplication<App>>();
   app.useGlobalPipes(

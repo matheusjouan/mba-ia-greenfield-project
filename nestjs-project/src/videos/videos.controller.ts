@@ -1,4 +1,12 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -10,6 +18,7 @@ import type { JwtPayload } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ApiErrorEnvelope } from '../common/openapi/api-error-envelope.dto';
 import { CreateVideoDto } from './dto/create-video.dto';
+import { UploadStatusResponseDto } from './dto/upload-status.response.dto';
 import { VideoUploadResponseDto } from './dto/video-upload.response.dto';
 import { VideosService } from './videos.service';
 
@@ -55,5 +64,42 @@ export class VideosController {
       title: dto.title,
     });
     return VideoUploadResponseDto.from(initiated);
+  }
+
+  @Get(':slug/upload')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Get the upload/processing state of an owned video',
+    description:
+      'Owner-only. While the video is a draft, lists the parts already in the storage and ' +
+      'returns fresh presigned URLs for the missing ones, so an interrupted upload can resume.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Pipeline state (resume data only while draft)',
+    type: UploadStatusResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Missing or invalid access token',
+    schema: { $ref: getSchemaPath(ApiErrorEnvelope) },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Video not found or owned by another user (VIDEO_NOT_FOUND)',
+    schema: { $ref: getSchemaPath(ApiErrorEnvelope) },
+  })
+  @ApiResponse({
+    status: 410,
+    description: 'Multipart upload expired in the storage (UPLOAD_EXPIRED)',
+    schema: { $ref: getSchemaPath(ApiErrorEnvelope) },
+  })
+  async getUploadStatus(
+    @CurrentUser() user: JwtPayload,
+    @Param('slug') slug: string,
+  ): Promise<UploadStatusResponseDto> {
+    return UploadStatusResponseDto.from(
+      await this.videosService.getUploadStatus(user.sub, slug),
+    );
   }
 }
