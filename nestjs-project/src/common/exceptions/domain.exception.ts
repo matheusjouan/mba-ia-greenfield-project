@@ -60,3 +60,13 @@ export class InvalidUploadPartsException extends DomainException {
     super('INVALID_UPLOAD_PARTS', 400, 'Uploaded parts are invalid');
   }
 }
+
+export class VideoFileTooLargeException extends DomainException {
+  constructor() {
+    super(
+      'VIDEO_FILE_TOO_LARGE',
+      400,
+      'Video file exceeds the maximum allowed size',
+    );
+  }
+}

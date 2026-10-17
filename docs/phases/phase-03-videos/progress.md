@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 4/17 completed
+**SIs:** 5/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -33,9 +33,12 @@
   - O `id` é atribuído pelo serviço antes do insert (a `storage_key` o embute); o teste confirma que o TypeORM persiste o id fornecido mesmo com `@PrimaryGeneratedColumn('uuid')`.
 
 ### SI-03.5 — Pré-cadastrar vídeo como rascunho ao iniciar o upload
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 22/22 passing (video-slug.util.spec.ts: 2, videos.service.spec.ts: 8, videos.service.integration-spec.ts: 5, channels.service.integration-spec.ts: 7 incl. 2 novos de `findByUserId`); `videos.module.integration-spec.ts` 1/1
+- **Observations:**
+  - O teste de compilação do `VideosModule` sobe `TypeOrmModule.forRoot` contra o banco, então foi nomeado `videos.module.integration-spec.ts` (regra de sufixo do `nestjs-project/CLAUDE.md`) em vez do `videos.module.spec.ts` listado no SI-03.4.
+  - Criado `src/common/database/pg-errors.ts` (`isUniqueViolationOn`) para o retry de slug. `ChannelsService` mantém sua cópia local da mesma checagem — unificar é refactor fora do escopo.
+  - `findByUserId` usa `dataSource.getRepository(Channel)` para não alterar o construtor de `ChannelsService` (usado diretamente pelos testes da Fase 02).
 
 ### SI-03.6 — Configurar a fila video-processing e o produtor de jobs
 - **Status:** pending
