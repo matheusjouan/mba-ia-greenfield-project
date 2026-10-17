@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 2/17 completed
+**SIs:** 3/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -18,9 +18,11 @@
   - No Git Bash do Windows, comandos `docker run` com caminhos absolutos (`/data`) precisam de `MSYS_NO_PATHCONV=1` (conversão automática de caminho).
 
 ### SI-03.3 — Criar StorageModule para multipart, URLs pré-assinadas e objetos
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 10/10 passing (storage.service.integration-spec.ts: 9 contra MinIO real, storage.module.spec.ts: 1)
+- **Observations:**
+  - Os clientes S3 usam `requestChecksumCalculation`/`responseChecksumValidation: 'WHEN_REQUIRED'`: no default o SDK `3.1152` embute `x-amz-checksum-crc32=AAAAAA==` (checksum de corpo vazio) nas URLs pré-assinadas de `UploadPart`, o que invalidaria o `PUT` do cliente — verificado comparando as URLs geradas nos dois modos.
+  - O lint do baseline (Fase 02) já falha com 162 erros em 11 arquivos pré-existentes — fora do escopo deste SI; registrado como bugfix separado (necessário para a DoD). O helper do `env.validation.integration-spec.ts` (estendido no SI-03.1) foi tipado para não vazar `any`.
 
 ### SI-03.4 — Criar entidade Video, VideosModule e migration CreateVideos
 - **Status:** pending

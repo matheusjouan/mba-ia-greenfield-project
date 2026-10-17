@@ -48,3 +48,15 @@ export class TokenReuseDetectedException extends DomainException {
     );
   }
 }
+
+export class UploadExpiredException extends DomainException {
+  constructor() {
+    super('UPLOAD_EXPIRED', 410, 'Upload session has expired');
+  }
+}
+
+export class InvalidUploadPartsException extends DomainException {
+  constructor() {
+    super('INVALID_UPLOAD_PARTS', 400, 'Uploaded parts are invalid');
+  }
+}
