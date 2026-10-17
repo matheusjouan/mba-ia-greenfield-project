@@ -1,3 +1,4 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigType } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -14,6 +15,7 @@ import storageConfig from './config/storage.config';
 import swaggerConfig from './config/swagger.config';
 import videoConfig from './config/video.config';
 import { envValidationSchema } from './config/env.validation';
+import { bullRootOptions } from './queues/bull-root.options';
 
 @Module({
   imports: [
@@ -45,6 +47,11 @@ import { envValidationSchema } from './config/env.validation';
         autoLoadEntities: true,
         synchronize: false,
       }),
+    }),
+    BullModule.forRootAsync({
+      inject: [queueConfig.KEY],
+      useFactory: (config: ConfigType<typeof queueConfig>) =>
+        bullRootOptions(config),
     }),
     AuthModule,
     VideosModule,

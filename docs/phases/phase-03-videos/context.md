@@ -3,7 +3,7 @@ kind: phase
 name: phase-03-videos
 sources_mtime:
   docs/project-plan.md: "2026-10-16T13:43:58-03:00"
-  docs/decisions/technical-decisions-phase-03-videos.md: "2026-10-16T16:38:04-03:00"
+  docs/decisions/technical-decisions-phase-03-videos.md: "2026-10-16T22:00:13-03:00"
   docs/decisions/technical-decisions-openapi-docs-nestjs.md: "2026-10-16T13:43:58-03:00"
   docs/phases/phase-01-configuracao-base/context.md: "2026-10-16T13:43:58-03:00"
   docs/phases/phase-02-auth/context.md: "2026-10-16T13:43:58-03:00"
@@ -48,12 +48,13 @@ sources_mtime:
 
 | Ref | Source | Scope | Topic | Status | Decision | Libraries |
 |-----|--------|-------|-------|--------|----------|-----------|
-| phase-03-videos/TD-01 | phase | Backend | Message Queue Technology | decided | A (BullMQ + Redis) | `bullmq@^6.x`, `@nestjs/bullmq@^12.x` |
+| phase-03-videos/TD-01 | phase | Backend | Message Queue Technology | decided | A (BullMQ + Redis) | `bullmq@^6.x`, `@nestjs/bullmq@^11.x`, `ioredis@^5.x` |
+|   └─ Last revision: 2026-10-16 — `@nestjs/bullmq` ^12 → ^11 (12 is ESM-only), `ioredis@^5` added (optional peer of bullmq 6) | | | | | | |
 | phase-03-videos/TD-02 | phase | Cross-layer | Large File Upload Strategy (up to 10GB) | decided | A (S3 Multipart Upload with presigned part URLs) | `@aws-sdk/client-s3@^3.x`, `@aws-sdk/s3-request-presigner@^3.x` |
 | phase-03-videos/TD-03 | phase | Cross-layer | Upload Limits and Part Sizing Policy | decided | A (fixed env-configurable 100 MiB parts, 10 GiB max, MIME allowlist) | — |
 | phase-03-videos/TD-04 | phase | Backend | Object Storage Layout, Provisioning and Presigned Endpoint | decided | A (single private bucket, per-video prefix, minio-init container, dual endpoint) | `@aws-sdk/client-s3@^3.x`, `@aws-sdk/s3-request-presigner@^3.x` |
 | phase-03-videos/TD-05 | phase | Repo-wide | Object Storage Container Image | decided | A (Chainguard MinIO images pinned by digest) | — |
-| phase-03-videos/TD-06 | phase | Backend | Video Worker Runtime and Deployment | decided | A (same NestJS codebase, separate entrypoint and Compose service) | `bullmq@^6.x`, `@nestjs/bullmq@^12.x` |
+| phase-03-videos/TD-06 | phase | Backend | Video Worker Runtime and Deployment | decided | A (same NestJS codebase, separate entrypoint and Compose service) | `bullmq@^6.x`, `@nestjs/bullmq@^11.x` |
 | phase-03-videos/TD-07 | phase | Backend | FFmpeg Integration Approach | decided | A (spawn ffprobe/ffmpeg directly via node:child_process) | — |
 | phase-03-videos/TD-08 | phase | Backend | Worker Media Access Strategy | decided | A (presigned GET URL as FFmpeg input) | `@aws-sdk/s3-request-presigner@^3.x` |
 | phase-03-videos/TD-09 | phase | Backend | Thumbnail Generation Policy | decided | A (frame at 10% of duration, JPEG, max 1280px wide) | — |
@@ -87,7 +88,10 @@ _Source files:_
 ### phase-03-videos/TD-01
 
 **Recommendation:** It is the only option with an official NestJS 11–compatible module that delivers retries/backoff/deduplication out of the box (needed by TD-11 and TD-12), while keeping the queue as a separate container exactly as the C4 diagram prescribes; pg-boss would save one container but merge the queue into the database, and RabbitMQ requires hand-built retry topology for no benefit at the current single-consumer scale.
-**Libraries:** `bullmq@^6.x`, `@nestjs/bullmq@^12.x`
+**Libraries:** `bullmq@^6.x`, `@nestjs/bullmq@^11.x`, `ioredis@^5.x`
+
+**Revisions:**
+- 2026-10-16 — `@nestjs/bullmq` pinned to `^11.x` (was `^12.x`, ESM-only) and `ioredis@^5.x` added (optional peer of `bullmq@6`, restricted to `^5` by `typeorm@0.3.28`). Found while implementing SI-03.6.
 
 ### phase-03-videos/TD-02
 
@@ -112,7 +116,7 @@ _Source files:_
 ### phase-03-videos/TD-06
 
 **Recommendation:** A second entrypoint over the same codebase delivers the diagram's isolated worker container while reusing the `Video` entity, config and storage module; Option B reintroduces the API blocking the phase is meant to avoid, and Option C buys image size at the cost of duplication the project does not need yet.
-**Libraries:** `bullmq@^6.x`, `@nestjs/bullmq@^12.x`
+**Libraries:** `bullmq@^6.x`, `@nestjs/bullmq@^11.x`
 
 ### phase-03-videos/TD-07
 

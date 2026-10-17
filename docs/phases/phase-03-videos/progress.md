@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 5/17 completed
+**SIs:** 6/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -41,9 +41,13 @@
   - `findByUserId` usa `dataSource.getRepository(Channel)` para não alterar o construtor de `ChannelsService` (usado diretamente pelos testes da Fase 02).
 
 ### SI-03.6 — Configurar a fila video-processing e o produtor de jobs
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 6/6 passing (video-processing.producer.integration-spec.ts: 5 contra Redis real, queues.module.integration-spec.ts: 1); `test/app.e2e-spec.ts` 1/1 com o `BullModule` raiz no `AppModule`
+- **Observations:**
+  - **Revisão de biblioteca (TD-01 Revisions):** `@nestjs/bullmq@12.0.0` é ESM-only (`"type": "module"`) e não carrega no Jest CommonJS — fixado em `^11.0.5` (CommonJS, peer NestJS 10/11). `bullmq@6` declara `ioredis` como peer **opcional** (o `library-refs.md` dizia "transitivo"); instalado `ioredis@^5.11.1` porque `typeorm@0.3.28` restringe esse peer opcional a `^5`. Decisions doc, `context.md` e `library-refs.md` atualizados; o texto do SI-03.1 no plano (já executado) ainda cita `^12.0.0`.
+  - O setup de teste (`src/test/jest-setup-env.ts`) roda **antes** do `dotenv/config` nas duas configs do Jest: o `dotenv` não sobrescreve variáveis já definidas, então os testes usam o prefixo `streamtube-test` mesmo com `QUEUE_PREFIX=bull` no `.env`. No `jest-e2e.json` o caminho é relativo a `test/` (`<rootDir>/../src/...`).
+  - O teste de compilação abre conexão Redis, então foi nomeado `queues.module.integration-spec.ts` (regra de sufixo) em vez de `queues.module.spec.ts`.
+  - A factory `bullRootOptions` (`src/queues/bull-root.options.ts`) foi criada já neste SI para ser reaproveitada pelos testes e, no SI-03.13, pelo `WorkerModule`.
 
 ### SI-03.7 — Retomar e concluir o upload, disparando o processamento
 - **Status:** pending

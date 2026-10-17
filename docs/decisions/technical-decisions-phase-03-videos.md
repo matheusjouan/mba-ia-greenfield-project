@@ -46,7 +46,10 @@ _Installed stack constraints (from `nestjs-project/package-lock.json`):_ `@nestj
 
 **Decision:** A (BullMQ + Redis)
 
-**Libraries:** `bullmq@^6.x`, `@nestjs/bullmq@^12.x`
+**Libraries:** `bullmq@^6.x`, `@nestjs/bullmq@^11.x`, `ioredis@^5.x`
+
+**Revisions:**
+- 2026-10-16 — `@nestjs/bullmq` pinned to `^11.x` (was `^12.x`) and `ioredis@^5.x` added as a direct dependency. Rationale: `@nestjs/bullmq@12.0.0` is ESM-only (`"type": "module"`) and targets NestJS 12 — it cannot be loaded by the CommonJS Jest runtime, while `11.0.5` is CommonJS with peer `@nestjs/common ^10 || ^11`; `bullmq@6` declares `ioredis` as an optional peer (not transitive), and `typeorm@0.3.28` restricts the optional peer to `ioredis@^5`. Found while implementing SI-03.6.
 
 ---
 
@@ -204,7 +207,7 @@ _Installed stack constraints (from `nestjs-project/package-lock.json`):_ `@nestj
 
 **Decision:** A (same NestJS codebase, separate entrypoint and Compose service)
 
-**Libraries:** `bullmq@^6.x`, `@nestjs/bullmq@^12.x`
+**Libraries:** `bullmq@^6.x`, `@nestjs/bullmq@^11.x` (see TD-01 Revisions)
 
 ---
 

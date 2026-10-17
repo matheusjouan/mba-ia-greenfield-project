@@ -5,8 +5,12 @@ libs:
     context7_id: "/taskforcesh/bullmq"
     fetched_at: "2026-10-16T16:40:21-03:00"
   "@nestjs/bullmq":
-    version: "^12.0.0"
+    version: "^11.0.5"
     context7_id: "/nestjs/docs.nestjs.com"
+    fetched_at: "2026-10-16T16:40:21-03:00"
+  "ioredis":
+    version: "^5.11.1"
+    context7_id: "/taskforcesh/bullmq"
     fetched_at: "2026-10-16T16:40:21-03:00"
   "@aws-sdk/client-s3":
     version: "^3.1152.0"
@@ -17,7 +21,7 @@ libs:
     context7_id: "/aws/aws-sdk-js-v3"
     fetched_at: "2026-10-16T16:40:21-03:00"
 sources_mtime:
-  docs/decisions/technical-decisions-phase-03-videos.md: "2026-10-16T16:38:04-03:00"
+  docs/decisions/technical-decisions-phase-03-videos.md: "2026-10-16T22:00:13-03:00"
 ---
 
 # Library References — phase-03-videos
@@ -26,8 +30,8 @@ Distilled from Context7 (fetched over the Context7 HTTP API — the `context7` M
 
 ## Compatibility notes
 
-- `@nestjs/bullmq@12.0.0` peer dependencies: `bullmq ^3 || ^4 || ^5 || ^6`, `@nestjs/common ^10 || ^11 || ^12`, `@nestjs/core ^10 || ^11 || ^12` → compatible with the installed NestJS 11.
-- `bullmq@6` uses `ioredis` internally (transitive) — no direct Redis client dependency needed.
+- `@nestjs/bullmq@11.0.5` (CommonJS) peer dependencies: `bullmq ^3 || ^4 || ^5 || ^6`, `@nestjs/common ^10 || ^11`, `@nestjs/core ^10 || ^11` → compatible with the installed NestJS 11. **Do not use `12.x`:** it is ESM-only (`"type": "module"`) and fails to load under the CommonJS Jest runtime (revision 2026-10-16, see TD-01 Revisions).
+- `bullmq@6` declares `ioredis` as an **optional peer** (it is not installed transitively): add `ioredis` explicitly. `typeorm@0.3.28` restricts that optional peer to `ioredis@^5`, so the project pins `ioredis@^5.11.1` (revision 2026-10-16).
 - `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` must share the same minor version (both `3.1152.0`).
 - Redis must run with `maxmemory-policy noeviction` for BullMQ (evicted keys corrupt queue state).
 
