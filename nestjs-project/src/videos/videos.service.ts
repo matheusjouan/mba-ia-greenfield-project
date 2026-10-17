@@ -18,12 +18,14 @@ import { StorageService } from '../storage/storage.service';
 import type { CompletedPart } from '../storage/storage.types';
 import { Video } from './entities/video.entity';
 import { generateVideoSlug } from './video-slug.util';
+import { videoSourceKey } from './video-storage-keys';
 import { VideoStatus } from './videos.constants';
 import type {
   InitiateUploadInput,
   InitiatedUpload,
   PartUploadUrl,
   UploadSession,
+  ProcessedVideo,
   UploadStatus,
 } from './videos.types';
 
@@ -137,7 +139,7 @@ export class VideosService {
     }
 
     const id = randomUUID();
-    const storageKey = `videos/${id}/source${this.safeExtension(input.fileName)}`;
+    const storageKey = videoSourceKey(id, this.safeExtension(input.fileName));
     const uploadId = await this.storageService.createMultipartUpload(
       storageKey,
       input.mimeType,
@@ -196,6 +198,35 @@ export class VideosService {
       expiresAt: new Date(Date.now() + expiresIn * 1000),
       parts,
     };
+  }
+
+  async findForProcessing(id: string): Promise<Video | null> {
+    return this.videoRepository.findOneBy({ id });
+  }
+
+  /** processing → ready. A no-op if the video left `processing` meanwhile. */
+  async markReady(id: string, processed: ProcessedVideo): Promise<void> {
+    await this.videoRepository.update(
+      { id, status: VideoStatus.Processing },
+      {
+        status: VideoStatus.Ready,
+        duration_seconds: processed.durationSeconds,
+        width: processed.width,
+        height: processed.height,
+        metadata: processed.metadata,
+        thumbnail_key: processed.thumbnailKey,
+        processing_error: null,
+        processed_at: new Date(),
+      },
+    );
+  }
+
+  /** processing → failed, recording why (the last attempt's error). */
+  async markFailed(id: string, reason: string): Promise<void> {
+    await this.videoRepository.update(
+      { id, status: VideoStatus.Processing },
+      { status: VideoStatus.Failed, processing_error: reason },
+    );
   }
 
   private async findOwnedBySlug(userId: string, slug: string): Promise<Video> {

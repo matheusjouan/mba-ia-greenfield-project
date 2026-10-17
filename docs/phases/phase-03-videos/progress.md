@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 11/17 completed
+**SIs:** 12/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -83,9 +83,12 @@
   - Falhas do FFmpeg são classificadas: mídia ilegível → `InvalidMediaError` (permanente, vira `UnrecoverableError` no SI-03.12); conexão recusada / timeout / 5xx do storage → `Error` comum, para o BullMQ re-tentar. Coberto por teste contra uma porta inexistente.
 
 ### SI-03.12 — Processar o vídeo no worker e fechar o ciclo de status
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 16/16 passing (video-processing.service.spec.ts: 7 unit, video-processing.processor.spec.ts: 5 unit, video-processing.service.integration-spec.ts: 3 com DB + MinIO + FFmpeg reais, video-worker.module.integration-spec.ts: 1); suíte `src/videos` re-executada 39/39
+- **Observations:**
+  - `markReady`/`markFailed` só atualizam linhas em `processing` (`UPDATE ... WHERE id AND status = 'processing'`), o que torna as transições do worker idempotentes e impede sobrescrever um vídeo já `ready`.
+  - Layout de chaves do storage centralizado em `src/videos/video-storage-keys.ts` (usado pela API e pelo worker).
+  - Os testes de compilação/integração que sobem o `BullModule`/Postgres usam o sufixo `*.integration-spec.ts` (`video-worker.module.integration-spec.ts` em vez do `video-worker.module.spec.ts` do plano). A entrega do job pela fila real (evento `failed` → `markFailed`) é exercitada no SI-03.13 e nos e2e.
 
 ### SI-03.13 — Subir o worker de vídeo como processo e serviço Compose próprios
 - **Status:** pending

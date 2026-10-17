@@ -1,5 +1,5 @@
 import type { VideoMimeType } from './videos.constants';
-import type { Video } from './entities/video.entity';
+import type { Video, VideoMetadata } from './entities/video.entity';
 import type { StoredPart } from '../storage/storage.types';
 
 export interface InitiateUploadInput {
@@ -34,4 +34,13 @@ export interface UploadStatus {
   video: Video;
   /** Present only while the video is a draft. */
   upload: ResumableUpload | null;
+}
+
+/** What the worker extracted from the media, persisted on processing → ready. */
+export interface ProcessedVideo {
+  durationSeconds: number;
+  width: number;
+  height: number;
+  metadata: VideoMetadata;
+  thumbnailKey: string;
 }
