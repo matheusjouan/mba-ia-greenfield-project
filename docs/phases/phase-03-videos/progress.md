@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 10/17 completed
+**SIs:** 11/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -76,9 +76,11 @@
 - **Observations:** none
 
 ### SI-03.11 — Extrair metadados e thumbnail com ffprobe/ffmpeg
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 11/11 passing (media-probe.parser.spec.ts: 6 unit, media-probe.service.integration-spec.ts: 5 com ffprobe/ffmpeg reais sobre arquivo local e URL pré-assinada do MinIO)
+- **Observations:**
+  - Fixture `test/fixtures/sample.mp4` (23 KB: 3 s, 320x240, H.264 + AAC, 15 fps, `+faststart`) gerado com o FFmpeg do container.
+  - Falhas do FFmpeg são classificadas: mídia ilegível → `InvalidMediaError` (permanente, vira `UnrecoverableError` no SI-03.12); conexão recusada / timeout / 5xx do storage → `Error` comum, para o BullMQ re-tentar. Coberto por teste contra uma porta inexistente.
 
 ### SI-03.12 — Processar o vídeo no worker e fechar o ciclo de status
 - **Status:** pending
