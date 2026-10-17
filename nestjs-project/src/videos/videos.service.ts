@@ -7,8 +7,15 @@ import { Repository } from 'typeorm';
 import videoConfig from '../config/video.config';
 import { ChannelsService } from '../channels/channels.service';
 import { isUniqueViolationOn } from '../common/database/pg-errors';
-import { VideoFileTooLargeException } from '../common/exceptions/domain.exception';
+import {
+  UploadSizeMismatchException,
+  VideoFileTooLargeException,
+  VideoNotFoundException,
+  VideoNotInDraftException,
+} from '../common/exceptions/domain.exception';
+import { VideoProcessingProducer } from '../queues/video-processing.producer';
 import { StorageService } from '../storage/storage.service';
+import type { CompletedPart } from '../storage/storage.types';
 import { Video } from './entities/video.entity';
 import { generateVideoSlug } from './video-slug.util';
 import { VideoStatus } from './videos.constants';
@@ -17,12 +24,16 @@ import type {
   InitiatedUpload,
   PartUploadUrl,
   UploadSession,
+  UploadStatus,
 } from './videos.types';
 
 const MAX_SLUG_ATTEMPTS = 5;
 const SLUG_COLUMN = 'slug';
 const TITLE_MAX_LENGTH = 100;
 const SAFE_EXTENSION = /^\.[a-z0-9]{1,10}$/;
+const SIZE_MISMATCH_ERROR =
+  'Uploaded file size does not match the declared size';
+const ENQUEUE_FAILED_ERROR = 'Could not enqueue the processing job';
 
 @Injectable()
 export class VideosService {
@@ -31,9 +42,82 @@ export class VideosService {
     private readonly videoRepository: Repository<Video>,
     private readonly channelsService: ChannelsService,
     private readonly storageService: StorageService,
+    private readonly videoProcessingProducer: VideoProcessingProducer,
     @Inject(videoConfig.KEY)
     private readonly config: ConfigType<typeof videoConfig>,
   ) {}
+
+  /**
+   * Owner view of the pipeline. While the video is a draft, returns the
+   * parts already in the storage and fresh URLs for the missing ones.
+   */
+  async getUploadStatus(userId: string, slug: string): Promise<UploadStatus> {
+    const video = await this.findOwnedBySlug(userId, slug);
+    if (video.status !== VideoStatus.Draft) {
+      return { video, upload: null };
+    }
+
+    const uploadedParts = await this.storageService.listParts(
+      video.storage_key,
+      video.upload_id!,
+    );
+    const uploaded = new Set(uploadedParts.map((part) => part.partNumber));
+    const partCount = this.partCountOf(video);
+    const missing = Array.from({ length: partCount }, (_, i) => i + 1).filter(
+      (partNumber) => !uploaded.has(partNumber),
+    );
+
+    return {
+      video,
+      upload: {
+        ...(await this.buildUploadSession(video, partCount, missing)),
+        uploadedParts,
+      },
+    };
+  }
+
+  /**
+   * Closes the multipart upload, checks the stored size and hands the video
+   * to the worker: draft → processing (or failed when it cannot proceed).
+   */
+  async completeUpload(
+    userId: string,
+    slug: string,
+    parts: CompletedPart[],
+  ): Promise<Video> {
+    const video = await this.findOwnedBySlug(userId, slug);
+    if (video.status !== VideoStatus.Draft) {
+      throw new VideoNotInDraftException();
+    }
+
+    await this.storageService.completeMultipartUpload(
+      video.storage_key,
+      video.upload_id!,
+      parts,
+    );
+    video.upload_id = null;
+
+    const { contentLength } = await this.storageService.headObject(
+      video.storage_key,
+    );
+    if (contentLength !== video.file_size) {
+      await this.storageService.deleteObject(video.storage_key);
+      await this.fail(video, SIZE_MISMATCH_ERROR);
+      throw new UploadSizeMismatchException();
+    }
+
+    video.status = VideoStatus.Processing;
+    await this.videoRepository.save(video);
+
+    try {
+      await this.videoProcessingProducer.enqueue(video.id);
+    } catch (error) {
+      await this.fail(video, ENQUEUE_FAILED_ERROR);
+      throw error;
+    }
+
+    return video;
+  }
 
   /**
    * Pre-registers the video as a draft and opens a multipart upload whose
@@ -79,9 +163,7 @@ export class VideosService {
       throw error;
     }
 
-    const partCount = Math.ceil(
-      input.fileSize / this.config.uploadPartSizeBytes,
-    );
+    const partCount = this.partCountOf(video);
     const partNumbers = Array.from({ length: partCount }, (_, i) => i + 1);
 
     return {
@@ -114,6 +196,28 @@ export class VideosService {
       expiresAt: new Date(Date.now() + expiresIn * 1000),
       parts,
     };
+  }
+
+  private async findOwnedBySlug(userId: string, slug: string): Promise<Video> {
+    const video = await this.videoRepository.findOne({
+      where: { slug },
+      relations: { channel: true },
+    });
+    // A non-owner gets the same answer as a missing video: no existence leak
+    if (!video || video.channel.user_id !== userId) {
+      throw new VideoNotFoundException();
+    }
+    return video;
+  }
+
+  private async fail(video: Video, reason: string): Promise<void> {
+    video.status = VideoStatus.Failed;
+    video.processing_error = reason;
+    await this.videoRepository.save(video);
+  }
+
+  private partCountOf(video: Video): number {
+    return Math.ceil(video.file_size / this.config.uploadPartSizeBytes);
   }
 
   private async insertWithUniqueSlug(video: Video): Promise<Video> {

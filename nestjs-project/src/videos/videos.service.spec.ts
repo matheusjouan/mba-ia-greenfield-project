@@ -2,7 +2,13 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { QueryFailedError } from 'typeorm';
 import { ChannelsService } from '../channels/channels.service';
-import { VideoFileTooLargeException } from '../common/exceptions/domain.exception';
+import { VideoProcessingProducer } from '../queues/video-processing.producer';
+import {
+  UploadSizeMismatchException,
+  VideoFileTooLargeException,
+  VideoNotFoundException,
+  VideoNotInDraftException,
+} from '../common/exceptions/domain.exception';
 import videoConfig from '../config/video.config';
 import { StorageService } from '../storage/storage.service';
 import { Video } from './entities/video.entity';
@@ -27,13 +33,19 @@ describe('VideosService', () => {
   const videoRepository = {
     create: jest.fn((data: Partial<Video>) => ({ ...data }) as Video),
     save: jest.fn((video: Video) => Promise.resolve(video)),
+    findOne: jest.fn(),
   };
   const channelsService = { findByUserId: jest.fn() };
   const storageService = {
     createMultipartUpload: jest.fn(),
     abortMultipartUpload: jest.fn(),
     presignUploadPart: jest.fn(),
+    listParts: jest.fn(),
+    completeMultipartUpload: jest.fn(),
+    headObject: jest.fn(),
+    deleteObject: jest.fn(),
   };
+  const producer = { enqueue: jest.fn() };
 
   const input = {
     fileName: 'My Clip.mp4',
@@ -56,6 +68,7 @@ describe('VideosService', () => {
         { provide: getRepositoryToken(Video), useValue: videoRepository },
         { provide: ChannelsService, useValue: channelsService },
         { provide: StorageService, useValue: storageService },
+        { provide: VideoProcessingProducer, useValue: producer },
         {
           provide: videoConfig.KEY,
           useValue: {
@@ -164,6 +177,142 @@ describe('VideosService', () => {
         QueryFailedError,
       );
       expect(videoRepository.save).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  function storedVideo(overrides: Partial<Video> = {}): Video {
+    return {
+      id: 'video-1',
+      slug: 'abcdefghijk',
+      status: VideoStatus.Draft,
+      file_size: PART_SIZE + 10,
+      storage_key: 'videos/video-1/source.mp4',
+      upload_id: 'upload-1',
+      processing_error: null,
+      channel: { user_id: 'owner-1' },
+      ...overrides,
+    } as Video;
+  }
+
+  describe('getUploadStatus', () => {
+    it('hides videos owned by another user behind VIDEO_NOT_FOUND', async () => {
+      videoRepository.findOne.mockResolvedValue(storedVideo());
+
+      await expect(
+        service.getUploadStatus('intruder', 'abcdefghijk'),
+      ).rejects.toThrow(VideoNotFoundException);
+    });
+
+    it('rejects unknown slugs with VIDEO_NOT_FOUND', async () => {
+      videoRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.getUploadStatus('owner-1', 'missing0000'),
+      ).rejects.toThrow(VideoNotFoundException);
+    });
+
+    it('returns URLs only for the parts not uploaded yet', async () => {
+      videoRepository.findOne.mockResolvedValue(storedVideo());
+      storageService.listParts.mockResolvedValue([
+        { partNumber: 1, etag: '"e1"', size: PART_SIZE },
+      ]);
+
+      const { upload } = await service.getUploadStatus(
+        'owner-1',
+        'abcdefghijk',
+      );
+
+      expect(upload!.partCount).toBe(2);
+      expect(upload!.uploadedParts).toEqual([
+        { partNumber: 1, etag: '"e1"', size: PART_SIZE },
+      ]);
+      expect(upload!.parts.map((part) => part.partNumber)).toEqual([2]);
+    });
+
+    it('returns no upload data once the video left the draft state', async () => {
+      videoRepository.findOne.mockResolvedValue(
+        storedVideo({ status: VideoStatus.Processing, upload_id: null }),
+      );
+
+      const result = await service.getUploadStatus('owner-1', 'abcdefghijk');
+
+      expect(result.upload).toBeNull();
+      expect(storageService.listParts).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('completeUpload', () => {
+    const parts = [
+      { partNumber: 1, etag: '"e1"' },
+      { partNumber: 2, etag: '"e2"' },
+    ];
+
+    it('moves the draft to processing and enqueues the job', async () => {
+      videoRepository.findOne.mockResolvedValue(storedVideo());
+      storageService.headObject.mockResolvedValue({
+        contentLength: PART_SIZE + 10,
+      });
+
+      const video = await service.completeUpload(
+        'owner-1',
+        'abcdefghijk',
+        parts,
+      );
+
+      expect(video.status).toBe(VideoStatus.Processing);
+      expect(video.upload_id).toBeNull();
+      expect(producer.enqueue).toHaveBeenCalledWith('video-1');
+    });
+
+    it('refuses to complete a video that is not a draft', async () => {
+      videoRepository.findOne.mockResolvedValue(
+        storedVideo({ status: VideoStatus.Processing }),
+      );
+
+      await expect(
+        service.completeUpload('owner-1', 'abcdefghijk', parts),
+      ).rejects.toThrow(VideoNotInDraftException);
+      expect(storageService.completeMultipartUpload).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-owner with VIDEO_NOT_FOUND', async () => {
+      videoRepository.findOne.mockResolvedValue(storedVideo());
+
+      await expect(
+        service.completeUpload('intruder', 'abcdefghijk', parts),
+      ).rejects.toThrow(VideoNotFoundException);
+    });
+
+    it('deletes the object and fails the video when the size differs', async () => {
+      videoRepository.findOne.mockResolvedValue(storedVideo());
+      storageService.headObject.mockResolvedValue({ contentLength: 5 });
+
+      await expect(
+        service.completeUpload('owner-1', 'abcdefghijk', parts),
+      ).rejects.toThrow(UploadSizeMismatchException);
+
+      expect(storageService.deleteObject).toHaveBeenCalledWith(
+        'videos/video-1/source.mp4',
+      );
+      const saved = videoRepository.save.mock.calls.at(-1)![0];
+      expect(saved.status).toBe(VideoStatus.Failed);
+      expect(saved.processing_error).toBeTruthy();
+      expect(producer.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('fails the video when the job cannot be enqueued', async () => {
+      videoRepository.findOne.mockResolvedValue(storedVideo());
+      storageService.headObject.mockResolvedValue({
+        contentLength: PART_SIZE + 10,
+      });
+      producer.enqueue.mockRejectedValueOnce(new Error('redis down'));
+
+      await expect(
+        service.completeUpload('owner-1', 'abcdefghijk', parts),
+      ).rejects.toThrow('redis down');
+
+      const saved = videoRepository.save.mock.calls.at(-1)![0];
+      expect(saved.status).toBe(VideoStatus.Failed);
     });
   });
 });

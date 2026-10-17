@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 6/17 completed
+**SIs:** 7/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -50,9 +50,11 @@
   - A factory `bullRootOptions` (`src/queues/bull-root.options.ts`) foi criada já neste SI para ser reaproveitada pelos testes e, no SI-03.13, pelo `WorkerModule`.
 
 ### SI-03.7 — Retomar e concluir o upload, disparando o processamento
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 29/29 passing (videos.service.spec.ts: 17 unit, videos.service.integration-spec.ts: 12 contra DB + MinIO + Redis reais); `videos.module.integration-spec.ts` 1/1; `test/app.e2e-spec.ts` 1/1
+- **Observations:**
+  - A integração usa partes de 5 MiB via `overrideProvider(videoConfig.KEY)` (o mínimo do S3) para cenários de múltiplas partes sem enviar 100 MiB; não altera `process.env`, que vazaria entre arquivos no `--runInBand`.
+  - `upload_id` é zerado logo após o `CompleteMultipartUpload` (o upload deixa de existir no storage), inclusive no caminho de tamanho divergente.
 
 ### SI-03.8 — Endpoint POST /videos
 - **Status:** pending

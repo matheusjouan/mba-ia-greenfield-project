@@ -1,17 +1,27 @@
 import { randomBytes } from 'node:crypto';
+import { BullModule, getQueueToken } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
+import type { ConfigType } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Queue } from 'bullmq';
 import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { VerificationToken } from '../auth/entities/verification-token.entity';
 import { Channel } from '../channels/entities/channel.entity';
 import {
+  InvalidUploadPartsException,
   UploadExpiredException,
+  UploadSizeMismatchException,
   VideoFileTooLargeException,
+  VideoNotFoundException,
+  VideoNotInDraftException,
 } from '../common/exceptions/domain.exception';
+import queueConfig from '../config/queue.config';
 import storageConfig from '../config/storage.config';
 import videoConfig from '../config/video.config';
+import { bullRootOptions } from '../queues/bull-root.options';
+import { VIDEO_PROCESSING_QUEUE } from '../queues/queues.constants';
 import { StorageService } from '../storage/storage.service';
 import {
   cleanAllTables,
@@ -25,6 +35,7 @@ import { VideosService } from './videos.service';
 
 const ALL_ENTITIES = [User, Channel, RefreshToken, VerificationToken, Video];
 const MIB = 1024 * 1024;
+const PART_SIZE = 5 * MIB;
 
 describe('VideosService (integration)', () => {
   let moduleRef: TestingModule;
@@ -32,7 +43,17 @@ describe('VideosService (integration)', () => {
   let storage: StorageService;
   let dataSource: DataSource;
   let videoRepository: Repository<Video>;
+  let queue: Queue;
   let counter = 0;
+
+  async function putPart(url: string, size: number): Promise<string> {
+    const response = await fetch(url, {
+      method: 'PUT',
+      body: new Uint8Array(randomBytes(size)),
+    });
+    expect(response.status).toBe(200);
+    return response.headers.get('etag')!;
+  }
 
   async function createOwner(): Promise<User> {
     counter += 1;
@@ -56,17 +77,27 @@ describe('VideosService (integration)', () => {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
-          load: [storageConfig, videoConfig],
+          load: [storageConfig, videoConfig, queueConfig],
         }),
         TypeOrmModule.forRoot(createTestDataSource(ALL_ENTITIES).options),
+        BullModule.forRootAsync({
+          inject: [queueConfig.KEY],
+          useFactory: (config: ConfigType<typeof queueConfig>) =>
+            bullRootOptions(config),
+        }),
         VideosModule,
       ],
-    }).compile();
+    })
+      // 5 MiB (S3 minimum) parts keep multi-part scenarios small
+      .overrideProvider(videoConfig.KEY)
+      .useValue({ ...videoConfig(), uploadPartSizeBytes: PART_SIZE })
+      .compile();
 
     service = moduleRef.get(VideosService);
     storage = moduleRef.get(StorageService);
     dataSource = moduleRef.get(DataSource);
     videoRepository = moduleRef.get(getRepositoryToken(Video));
+    queue = moduleRef.get<Queue>(getQueueToken(VIDEO_PROCESSING_QUEUE));
   });
 
   afterAll(async () => {
@@ -96,7 +127,7 @@ describe('VideosService (integration)', () => {
       expect(stored.storage_key).toBe(`videos/${video.id}/source.mp4`);
       expect(stored.upload_id).not.toBeNull();
       expect(stored.slug).toHaveLength(11);
-      expect(upload.partCount).toBe(1);
+      expect(upload.partCount).toBe(5);
       await storage.abortMultipartUpload(stored.storage_key, stored.upload_id!);
     });
 
@@ -180,6 +211,144 @@ describe('VideosService (integration)', () => {
         UploadExpiredException,
       );
       createSpy.mockRestore();
+    });
+  });
+
+  describe('getUploadStatus', () => {
+    it('lists uploaded parts and re-signs only the missing ones', async () => {
+      const owner = await createOwner();
+      const { video, upload } = await service.initiateUpload(owner.id, {
+        fileName: 'two-parts.mp4',
+        fileSize: PART_SIZE + MIB,
+        mimeType: 'video/mp4',
+      });
+      const etag = await putPart(upload.parts[0].url, PART_SIZE);
+
+      const status = await service.getUploadStatus(owner.id, video.slug);
+
+      expect(status.video.status).toBe(VideoStatus.Draft);
+      expect(status.upload!.uploadedParts).toEqual([
+        { partNumber: 1, etag, size: PART_SIZE },
+      ]);
+      expect(status.upload!.parts.map((part) => part.partNumber)).toEqual([2]);
+      await storage.abortMultipartUpload(video.storage_key, video.upload_id!);
+    });
+
+    it('reports UPLOAD_EXPIRED when the multipart upload no longer exists', async () => {
+      const owner = await createOwner();
+      const { video } = await service.initiateUpload(owner.id, {
+        fileName: 'expired.mp4',
+        fileSize: MIB,
+        mimeType: 'video/mp4',
+      });
+      await storage.abortMultipartUpload(video.storage_key, video.upload_id!);
+
+      await expect(
+        service.getUploadStatus(owner.id, video.slug),
+      ).rejects.toThrow(UploadExpiredException);
+    });
+
+    it('hides the video from other users', async () => {
+      const owner = await createOwner();
+      const intruder = await createOwner();
+      const { video } = await service.initiateUpload(owner.id, {
+        fileName: 'private.mp4',
+        fileSize: MIB,
+        mimeType: 'video/mp4',
+      });
+
+      await expect(
+        service.getUploadStatus(intruder.id, video.slug),
+      ).rejects.toThrow(VideoNotFoundException);
+      await storage.abortMultipartUpload(video.storage_key, video.upload_id!);
+    });
+  });
+
+  describe('completeUpload', () => {
+    beforeEach(async () => {
+      await queue.obliterate({ force: true });
+    });
+
+    it('assembles the parts, moves the video to processing and enqueues the job', async () => {
+      const owner = await createOwner();
+      const { video, upload } = await service.initiateUpload(owner.id, {
+        fileName: 'two-parts.mp4',
+        fileSize: PART_SIZE + MIB,
+        mimeType: 'video/mp4',
+      });
+      const etags = [
+        await putPart(upload.parts[0].url, PART_SIZE),
+        await putPart(upload.parts[1].url, MIB),
+      ];
+
+      await service.completeUpload(owner.id, video.slug, [
+        { partNumber: 1, etag: etags[0] },
+        { partNumber: 2, etag: etags[1] },
+      ]);
+
+      const stored = await videoRepository.findOneByOrFail({ id: video.id });
+      expect(stored.status).toBe(VideoStatus.Processing);
+      expect(stored.upload_id).toBeNull();
+      const job = await queue.getJob(video.id);
+      expect(job?.data).toEqual({ videoId: video.id });
+      await storage.deleteObject(video.storage_key);
+    });
+
+    it('rejects a second completion with VIDEO_NOT_IN_DRAFT', async () => {
+      const owner = await createOwner();
+      const { video, upload } = await service.initiateUpload(owner.id, {
+        fileName: 'once.mp4',
+        fileSize: MIB,
+        mimeType: 'video/mp4',
+      });
+      const etag = await putPart(upload.parts[0].url, MIB);
+      const parts = [{ partNumber: 1, etag }];
+      await service.completeUpload(owner.id, video.slug, parts);
+
+      await expect(
+        service.completeUpload(owner.id, video.slug, parts),
+      ).rejects.toThrow(VideoNotInDraftException);
+      await storage.deleteObject(video.storage_key);
+    });
+
+    it('keeps the draft when the storage rejects the parts', async () => {
+      const owner = await createOwner();
+      const { video, upload } = await service.initiateUpload(owner.id, {
+        fileName: 'bad-etag.mp4',
+        fileSize: MIB,
+        mimeType: 'video/mp4',
+      });
+      await putPart(upload.parts[0].url, MIB);
+
+      await expect(
+        service.completeUpload(owner.id, video.slug, [
+          { partNumber: 1, etag: '"00000000000000000000000000000000"' },
+        ]),
+      ).rejects.toThrow(InvalidUploadPartsException);
+
+      const stored = await videoRepository.findOneByOrFail({ id: video.id });
+      expect(stored.status).toBe(VideoStatus.Draft);
+      await storage.abortMultipartUpload(video.storage_key, video.upload_id!);
+    });
+
+    it('deletes the object and fails the video when the stored size differs from the declared one', async () => {
+      const owner = await createOwner();
+      const { video, upload } = await service.initiateUpload(owner.id, {
+        fileName: 'lying.mp4',
+        fileSize: 2 * MIB,
+        mimeType: 'video/mp4',
+      });
+      const etag = await putPart(upload.parts[0].url, MIB);
+
+      await expect(
+        service.completeUpload(owner.id, video.slug, [{ partNumber: 1, etag }]),
+      ).rejects.toThrow(UploadSizeMismatchException);
+
+      const stored = await videoRepository.findOneByOrFail({ id: video.id });
+      expect(stored.status).toBe(VideoStatus.Failed);
+      expect(stored.processing_error).toBeTruthy();
+      await expect(storage.headObject(video.storage_key)).rejects.toThrow();
+      expect(await queue.getJob(video.id)).toBeUndefined();
     });
   });
 });

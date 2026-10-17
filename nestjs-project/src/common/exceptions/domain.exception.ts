@@ -70,3 +70,25 @@ export class VideoFileTooLargeException extends DomainException {
     );
   }
 }
+
+export class VideoNotFoundException extends DomainException {
+  constructor() {
+    super('VIDEO_NOT_FOUND', 404, 'Video not found');
+  }
+}
+
+export class VideoNotInDraftException extends DomainException {
+  constructor() {
+    super('VIDEO_NOT_IN_DRAFT', 409, 'Video upload is not in progress');
+  }
+}
+
+export class UploadSizeMismatchException extends DomainException {
+  constructor() {
+    super(
+      'UPLOAD_SIZE_MISMATCH',
+      400,
+      'Uploaded file size does not match the declared size',
+    );
+  }
+}
