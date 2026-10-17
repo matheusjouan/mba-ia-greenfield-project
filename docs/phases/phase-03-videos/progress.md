@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 9/17 completed
+**SIs:** 10/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -71,8 +71,8 @@
   - `createVideosE2eApp` passou a aceitar overrides da config de vídeo (`overrideProvider(videoConfig.KEY)`), usado aqui para partes de 5 MiB.
 
 ### SI-03.10 — Endpoint POST /videos/:slug/upload/complete
-- **Status:** pending
-- **Tests:** pending
+- **Status:** completed
+- **Tests:** 5/5 passing (test/videos-upload-complete.e2e-spec.ts, gerado da spec `specs/videos-upload-complete.plan.md`; inclui verificação do job `process-video` na fila Redis sob o prefixo de teste)
 - **Observations:** none
 
 ### SI-03.11 — Extrair metadados e thumbnail com ffprobe/ffmpeg

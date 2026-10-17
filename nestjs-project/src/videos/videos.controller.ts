@@ -17,7 +17,9 @@ import {
 import type { JwtPayload } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ApiErrorEnvelope } from '../common/openapi/api-error-envelope.dto';
+import { CompleteUploadDto } from './dto/complete-upload.dto';
 import { CreateVideoDto } from './dto/create-video.dto';
+import { VideoSummaryResponseDto } from './dto/video-summary.response.dto';
 import { UploadStatusResponseDto } from './dto/upload-status.response.dto';
 import { VideoUploadResponseDto } from './dto/video-upload.response.dto';
 import { VideosService } from './videos.service';
@@ -101,5 +103,62 @@ export class VideosController {
     return UploadStatusResponseDto.from(
       await this.videosService.getUploadStatus(user.sub, slug),
     );
+  }
+
+  @Post(':slug/upload/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Complete a video upload',
+    description:
+      'Owner-only. Assembles the uploaded parts in the storage, checks the stored size and ' +
+      'moves the video to processing, enqueuing the automatic processing job.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Upload completed; processing started',
+    type: VideoSummaryResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Validation failed (VALIDATION_ERROR), parts rejected by the storage (INVALID_UPLOAD_PARTS) ' +
+      'or stored size different from the declared one (UPLOAD_SIZE_MISMATCH)',
+    schema: { $ref: getSchemaPath(ApiErrorEnvelope) },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Missing or invalid access token',
+    schema: { $ref: getSchemaPath(ApiErrorEnvelope) },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Video not found or owned by another user (VIDEO_NOT_FOUND)',
+    schema: { $ref: getSchemaPath(ApiErrorEnvelope) },
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Video is not a draft anymore (VIDEO_NOT_IN_DRAFT)',
+    schema: { $ref: getSchemaPath(ApiErrorEnvelope) },
+  })
+  @ApiResponse({
+    status: 410,
+    description: 'Multipart upload expired in the storage (UPLOAD_EXPIRED)',
+    schema: { $ref: getSchemaPath(ApiErrorEnvelope) },
+  })
+  async completeUpload(
+    @CurrentUser() user: JwtPayload,
+    @Param('slug') slug: string,
+    @Body() dto: CompleteUploadDto,
+  ): Promise<VideoSummaryResponseDto> {
+    const video = await this.videosService.completeUpload(
+      user.sub,
+      slug,
+      dto.parts.map((part) => ({
+        partNumber: part.part_number,
+        etag: part.etag,
+      })),
+    );
+    return VideoSummaryResponseDto.from(video);
   }
 }
