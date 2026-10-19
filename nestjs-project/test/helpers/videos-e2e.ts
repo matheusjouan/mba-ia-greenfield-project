@@ -1,4 +1,11 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import {
+  INestApplication,
+  INestApplicationContext,
+  ValidationPipe,
+} from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
 import request from 'supertest';
@@ -10,6 +17,9 @@ import { DomainExceptionFilter } from '../../src/common/filters/domain-exception
 import { ValidationExceptionFilter } from '../../src/common/filters/validation-exception.filter';
 import { MailService } from '../../src/mail/mail.service';
 import { cleanAllTables } from '../../src/test/create-test-data-source';
+import { Video } from '../../src/videos/entities/video.entity';
+import { VideoStatus } from '../../src/videos/videos.constants';
+import { WorkerModule } from '../../src/worker.module';
 
 export const MIB = 1024 * 1024;
 
@@ -95,4 +105,65 @@ export async function putPart(url: string, body: Buffer): Promise<string> {
     throw new Error(`Part upload failed with ${response.status}`);
   }
   return response.headers.get('etag')!;
+}
+
+export const FIXTURE_PATH = resolve(__dirname, '../fixtures/sample.mp4');
+
+/**
+ * The video worker booted in the test process. It consumes the test queue
+ * prefix, so the `video-worker` compose service never takes these jobs.
+ */
+export async function startInProcessWorker(): Promise<INestApplicationContext> {
+  return NestFactory.createApplicationContext(WorkerModule, { logger: false });
+}
+
+export interface UploadedFixture {
+  id: string;
+  slug: string;
+  bytes: Buffer;
+}
+
+/** Full client flow: start the upload, PUT the fixture, complete it. */
+export async function uploadFixture(
+  context: VideosE2eContext,
+  accessToken: string,
+  fileName = 'sample.mp4',
+): Promise<UploadedFixture> {
+  const bytes = await readFile(FIXTURE_PATH);
+  const server = context.app.getHttpServer();
+  const created = await request(server)
+    .post('/videos')
+    .set('Authorization', `Bearer ${accessToken}`)
+    .send({
+      file_name: fileName,
+      file_size: bytes.length,
+      mime_type: 'video/mp4',
+    });
+  const { id, slug, upload } = created.body as {
+    id: string;
+    slug: string;
+    upload: { parts: { url: string }[] };
+  };
+  const etag = await putPart(upload.parts[0].url, bytes);
+  await request(server)
+    .post(`/videos/${slug}/upload/complete`)
+    .set('Authorization', `Bearer ${accessToken}`)
+    .send({ parts: [{ part_number: 1, etag }] });
+  return { id, slug, bytes };
+}
+
+export async function waitForVideoStatus(
+  context: VideosE2eContext,
+  videoId: string,
+  status: VideoStatus,
+  timeoutMs = 60_000,
+): Promise<Video> {
+  const videos = context.dataSource.getRepository(Video);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const video = await videos.findOneByOrFail({ id: videoId });
+    if (video.status === status) return video;
+    await new Promise((done) => setTimeout(done, 250));
+  }
+  throw new Error(`Video ${videoId} did not reach status ${status}`);
 }

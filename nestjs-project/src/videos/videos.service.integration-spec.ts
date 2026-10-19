@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { BullModule, getQueueToken } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import type { ConfigType } from '@nestjs/config';
@@ -350,5 +350,49 @@ describe('VideosService (integration)', () => {
       await expect(storage.headObject(video.storage_key)).rejects.toThrow();
       expect(await queue.getJob(video.id)).toBeUndefined();
     });
+  });
+
+  describe('findReadyBySlug', () => {
+    async function videoWithStatus(status: VideoStatus): Promise<Video> {
+      const owner = await createOwner();
+      const channel = await dataSource
+        .getRepository(Channel)
+        .findOneByOrFail({ user_id: owner.id });
+      const id = randomUUID();
+      return videoRepository.save(
+        videoRepository.create({
+          id,
+          slug: id.slice(0, 11),
+          channel_id: channel.id,
+          title: status,
+          status,
+          original_filename: 'clip.mp4',
+          mime_type: 'video/mp4',
+          file_size: MIB,
+          storage_key: `videos/${id}/source.mp4`,
+          upload_id: null,
+        }),
+      );
+    }
+
+    it('returns a ready video with its channel', async () => {
+      const video = await videoWithStatus(VideoStatus.Ready);
+
+      const found = await service.findReadyBySlug(video.slug);
+
+      expect(found.id).toBe(video.id);
+      expect(found.channel.id).toBe(video.channel_id);
+    });
+
+    it.each([VideoStatus.Draft, VideoStatus.Processing, VideoStatus.Failed])(
+      'hides %s videos behind VIDEO_NOT_FOUND',
+      async (status) => {
+        const video = await videoWithStatus(status);
+
+        await expect(service.findReadyBySlug(video.slug)).rejects.toThrow(
+          VideoNotFoundException,
+        );
+      },
+    );
   });
 });

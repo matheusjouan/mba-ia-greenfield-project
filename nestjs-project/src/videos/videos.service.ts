@@ -26,6 +26,7 @@ import type {
   PartUploadUrl,
   UploadSession,
   ProcessedVideo,
+  PublicVideo,
   UploadStatus,
 } from './videos.types';
 
@@ -198,6 +199,32 @@ export class VideosService {
       expiresAt: new Date(Date.now() + expiresIn * 1000),
       parts,
     };
+  }
+
+  /** Public view by unique URL: only `ready` videos exist for viewers. */
+  async getPublicVideo(slug: string): Promise<PublicVideo> {
+    const video = await this.findReadyBySlug(slug);
+    return {
+      video,
+      thumbnailUrl: await this.storageService.presignGetObject(
+        video.thumbnail_key!,
+        {
+          endpoint: 'public',
+          expiresIn: this.config.playbackUrlExpirationSeconds,
+        },
+      ),
+    };
+  }
+
+  async findReadyBySlug(slug: string): Promise<Video> {
+    const video = await this.videoRepository.findOne({
+      where: { slug, status: VideoStatus.Ready },
+      relations: { channel: true },
+    });
+    if (!video) {
+      throw new VideoNotFoundException();
+    }
+    return video;
   }
 
   async findForProcessing(id: string): Promise<Video | null> {

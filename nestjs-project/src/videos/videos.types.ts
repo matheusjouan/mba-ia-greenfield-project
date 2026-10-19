@@ -44,3 +44,9 @@ export interface ProcessedVideo {
   metadata: VideoMetadata;
   thumbnailKey: string;
 }
+
+export interface PublicVideo {
+  video: Video;
+  /** Presigned GET URL of the generated thumbnail. */
+  thumbnailUrl: string;
+}

@@ -16,12 +16,14 @@ import {
 } from '@nestjs/swagger';
 import type { JwtPayload } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { ApiErrorEnvelope } from '../common/openapi/api-error-envelope.dto';
 import { CompleteUploadDto } from './dto/complete-upload.dto';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { VideoSummaryResponseDto } from './dto/video-summary.response.dto';
 import { UploadStatusResponseDto } from './dto/upload-status.response.dto';
 import { VideoUploadResponseDto } from './dto/video-upload.response.dto';
+import { VideoResponseDto } from './dto/video.response.dto';
 import { VideosService } from './videos.service';
 
 @ApiTags('videos')
@@ -160,5 +162,27 @@ export class VideosController {
       })),
     );
     return VideoSummaryResponseDto.from(video);
+  }
+
+  @Public()
+  @Get(':slug')
+  @ApiOperation({
+    summary: 'Get a video by its unique URL',
+    description:
+      'Public metadata of a ready video (duration, dimensions, extracted metadata, channel) ' +
+      'with a presigned thumbnail URL. Videos that are not ready are not visible.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Ready video',
+    type: VideoResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Unknown slug or video not ready (VIDEO_NOT_FOUND)',
+    schema: { $ref: getSchemaPath(ApiErrorEnvelope) },
+  })
+  async findOne(@Param('slug') slug: string): Promise<VideoResponseDto> {
+    return VideoResponseDto.from(await this.videosService.getPublicVideo(slug));
   }
 }

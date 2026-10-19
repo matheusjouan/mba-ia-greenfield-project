@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 13/17 completed
+**SIs:** 14/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -102,9 +102,11 @@
   - Sessão interrompida por travamento da máquina durante o smoke; Docker reiniciado, stack e worker de pé novamente e o smoke re-executado com sucesso.
 
 ### SI-03.14 — Endpoint GET /videos/:slug
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 5/5 e2e passing (test/videos-get.e2e-spec.ts, gerado da spec `specs/videos-get.plan.md`, pipeline completo: upload direto ao MinIO → job na fila Redis → worker in-process com FFmpeg → `ready`); videos.service.integration-spec.ts 16/16 (4 novos de `findReadyBySlug`)
+- **Observations:**
+  - A montagem de `thumbnail_url` (pré-assinatura) fica no serviço (`getPublicVideo`), não no DTO/controller.
+  - Helpers de e2e ampliados: `startInProcessWorker` (contexto `WorkerModule` no processo de teste, prefixo de fila de teste), `uploadFixture` e `waitForVideoStatus`. O `beforeAll` que sobe API + worker precisa de timeout maior (60 s) que o padrão de 5 s do Jest neste bind mount do Windows — sem isso o teardown no meio do boot gera erros enganosos de `ioredis`.
 
 ### SI-03.15 — Endpoint GET /videos/:slug/stream
 - **Status:** pending
