@@ -22,7 +22,7 @@ Follow-ups (out of scope, not acted on):
 - `npm run openapi:export` (ts-node) does not apply the `@nestjs/swagger` CLI plugin, so request DTO schemas are exported without properties — pre-existing since Fase 02.
 - `ALL_ENTITIES` is duplicated across ~12 test files; a shared helper would avoid touching all of them when an entity is added.
 - `ChannelsService` keeps its own unique-violation check; it could reuse `src/common/database/pg-errors.ts`.
-- The `context7` MCP server is not configured in this fork's `.mcp.json` (Context7 was consulted over its HTTP API during this phase).
+- The `context7` MCP server was missing from this fork's `.mcp.json` during the phase (Context7 was consulted over its HTTP API); added afterwards in `bugfix/mcp-context7`.
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
