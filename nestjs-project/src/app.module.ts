@@ -1,39 +1,33 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigType } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
-import appConfig from './config/app.config';
-import authConfig from './config/auth.config';
+import { VideosModule } from './videos/videos.module';
+import { configModuleOptions } from './config/config-module.options';
 import databaseConfig from './config/database.config';
-import mailConfig from './config/mail.config';
-import swaggerConfig from './config/swagger.config';
-import { envValidationSchema } from './config/env.validation';
+import queueConfig from './config/queue.config';
+import { typeOrmOptions } from './database/typeorm.options';
+import { bullRootOptions } from './queues/bull-root.options';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      load: [appConfig, authConfig, databaseConfig, mailConfig, swaggerConfig],
-      validationSchema: envValidationSchema,
-      validationOptions: { allowUnknown: true, abortEarly: false },
-    }),
+    ConfigModule.forRoot(configModuleOptions),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [databaseConfig.KEY],
-      useFactory: (dbConfig: ConfigType<typeof databaseConfig>) => ({
-        type: 'postgres',
-        host: dbConfig.host,
-        port: dbConfig.port,
-        username: dbConfig.username,
-        password: dbConfig.password,
-        database: dbConfig.name,
-        autoLoadEntities: true,
-        synchronize: false,
-      }),
+      useFactory: (dbConfig: ConfigType<typeof databaseConfig>) =>
+        typeOrmOptions(dbConfig),
+    }),
+    BullModule.forRootAsync({
+      inject: [queueConfig.KEY],
+      useFactory: (config: ConfigType<typeof queueConfig>) =>
+        bullRootOptions(config),
     }),
     AuthModule,
+    VideosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

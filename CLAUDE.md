@@ -10,9 +10,9 @@ More info in the project overview: [docs/project-plan.md](docs/project-plan.md)
 
 This is a monorepo with two main areas:
 
-- `nestjs-project/` — Backend API (NestJS 11, TypeScript, Express). Contains modules for users, channels, videos, comments, etc.
-- `docs/` — Project documentation, architecture diagrams, and planning.
-- `next-frontend/` (Next.js) — not yet initialized
+- `nestjs-project/` — Backend API (NestJS 11, TypeScript, Express) and the video worker (same codebase, `src/worker.ts`). Modules: auth, users, channels, mail, videos, storage, queues, video-worker. See `nestjs-project/CLAUDE.md`.
+- `docs/` — Project documentation, architecture diagrams, and planning (`docs/decisions/`, `docs/phases/`).
+- `next-frontend/` (Next.js) — frontend of Fases 01–02; the video UI is not part of Fase 03.
 
 ## Architecture (C4 Container Diagram)
 
@@ -20,11 +20,13 @@ See `docs/diagrams/software-arch.mermaid` for the full diagram. Key containers:
 
 - **Frontend** (Next.js) → calls API via REST, streams from Object Storage
 - **API** (Nest.js) → business rules, auth, reads/writes DB, uploads to storage, publishes jobs to queue, sends emails
-- **Video Worker** (FFmpeg) → consumes jobs from queue, processes videos, updates DB and storage
+- **Video Worker** (FFmpeg) → consumes jobs from queue, processes videos, updates DB and storage — Compose service `video-worker` (`nestjs-project/src/worker.ts`)
 - **Database** (PostgreSQL) → users, channels, videos, comments, likes
-- **Object Storage** (S3/MinIO) → video files and thumbnails
-- **Message Queue** (TBD) → video processing job queue
-- **Email Service** (SMTP) → account confirmation and password recovery
+- **Object Storage** (S3/MinIO) → video files and thumbnails — Compose services `minio` + `minio-init` (bucket provisioning); clients upload and stream directly through presigned URLs
+- **Message Queue** (BullMQ on Redis) → video processing job queue `video-processing` — Compose service `redis`
+- **Email Service** (SMTP) → account confirmation and password recovery — Mailpit locally
+
+Video upload and processing flow (Fase 03): `POST /videos` pre-registers a draft and returns presigned part URLs → the client `PUT`s the parts straight to MinIO → `POST /videos/:slug/upload/complete` enqueues `process-video` → the worker runs `ffprobe`/`ffmpeg` over a presigned URL and marks the video `ready` (or `failed`) → `GET /videos/:slug/stream` and `/download` redirect to presigned URLs served by the storage (HTTP Range / `206`). Decisions: `docs/decisions/technical-decisions-phase-03-videos.md`; plan and progress: `docs/phases/phase-03-videos/`.
 
 ## Docker Networking
 
