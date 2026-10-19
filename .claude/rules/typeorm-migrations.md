@@ -75,4 +75,6 @@ new DataSource({
 
 Glob entries (`'src/**/*.entity.ts'`) work in production via `ts-node` but break in `ts-jest` — explicit class arrays are the only reliable form in test data sources. The runtime `data-source.ts` can keep the glob.
 
+Use the shared `ALL_ENTITIES` array exported by `nestjs-project/src/test/create-test-data-source.ts` instead of redeclaring the list in each test: relations cross modules (e.g., `Channel` → `User`, `Channel` → `Video`), so a partial list breaks metadata building. When a new entity is created, add it there.
+
 For TypeORM **query** pitfalls (`IsNull`, transactions, SAVEPOINT) that apply in service code, see `typeorm-queries.md`.

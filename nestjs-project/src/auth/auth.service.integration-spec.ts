@@ -22,6 +22,7 @@ import { User } from '../users/entities/user.entity';
 import { UsersModule } from '../users/users.module';
 import {
   cleanAllTables,
+  ALL_ENTITIES,
   createTestDataSource,
 } from '../test/create-test-data-source';
 import { clearMailpitMessages } from '../test/mailpit';
@@ -31,10 +32,6 @@ import {
   VerificationToken,
   VerificationTokenType,
 } from './entities/verification-token.entity';
-
-import { Video } from '../videos/entities/video.entity';
-
-const ALL_ENTITIES = [User, Channel, RefreshToken, VerificationToken, Video];
 
 async function createAuthTestModule(): Promise<TestingModule> {
   const ds = createTestDataSource(ALL_ENTITIES);

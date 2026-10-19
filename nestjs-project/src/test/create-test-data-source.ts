@@ -1,4 +1,21 @@
 import { DataSource, EntitySchema, MigrationInterface } from 'typeorm';
+import { RefreshToken } from '../auth/entities/refresh-token.entity';
+import { VerificationToken } from '../auth/entities/verification-token.entity';
+import { Channel } from '../channels/entities/channel.entity';
+import { User } from '../users/entities/user.entity';
+import { Video } from '../videos/entities/video.entity';
+
+/**
+ * Every entity of the schema. Relations reach across modules (Channel → User,
+ * Channel → Video), so test data sources load the whole set — add new entities here.
+ */
+export const ALL_ENTITIES = [
+  User,
+  Channel,
+  RefreshToken,
+  VerificationToken,
+  Video,
+];
 
 // Entity classes are constructors; avoids the unsafe `Function` type.
 type EntityTarget = abstract new (...args: never[]) => unknown;
