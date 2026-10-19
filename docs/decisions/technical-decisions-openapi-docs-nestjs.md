@@ -80,6 +80,9 @@ _Subprojects in scope:_
 
 **Decision:** C (Runtime UI + openapi.json exportado)
 
+**Revisions:**
+- 2026-10-19 — `npm run openapi:export` passou a exportar a partir do build compilado (`nest build && node dist/openapi-export`) em vez de `ts-node`. Rationale: o `ts-node` não aplica o plugin CLI do `@nestjs/swagger` (TD-01), então os DTOs de entrada saíam sem propriedades no `openapi.json` versionado; o `nest build` aplica o plugin e o artefato passa a refletir as regras de validação.
+
 ---
 
 ## TD-03: Production Exposure Policy for Swagger UI
