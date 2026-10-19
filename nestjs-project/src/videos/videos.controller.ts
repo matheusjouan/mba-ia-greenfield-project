@@ -212,4 +212,29 @@ export class VideosController {
       statusCode: HttpStatus.FOUND,
     };
   }
+
+  @Public()
+  @Get(':slug/download')
+  @Redirect()
+  @ApiOperation({
+    summary: 'Download a video',
+    description:
+      'Redirects to a short-lived presigned URL signed with Content-Disposition: attachment, ' +
+      'so the object storage serves the original file as a download.',
+  })
+  @ApiResponse({
+    status: 302,
+    description: 'Redirect to the presigned download URL (Location header)',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Unknown slug or video not ready (VIDEO_NOT_FOUND)',
+    schema: { $ref: getSchemaPath(ApiErrorEnvelope) },
+  })
+  async download(@Param('slug') slug: string): Promise<HttpRedirectResponse> {
+    return {
+      url: await this.videosService.getDownloadUrl(slug),
+      statusCode: HttpStatus.FOUND,
+    };
+  }
 }

@@ -228,6 +228,16 @@ export class VideosService {
     });
   }
 
+  /** Same presigned URL, signed so the storage answers as an attachment. */
+  async getDownloadUrl(slug: string): Promise<string> {
+    const video = await this.findReadyBySlug(slug);
+    return this.storageService.presignGetObject(video.storage_key, {
+      endpoint: 'public',
+      expiresIn: this.config.playbackUrlExpirationSeconds,
+      downloadFileName: this.safeDownloadName(video.original_filename),
+    });
+  }
+
   async findReadyBySlug(slug: string): Promise<Video> {
     const video = await this.videoRepository.findOne({
       where: { slug, status: VideoStatus.Ready },
@@ -307,6 +317,11 @@ export class VideosService {
   private titleFromFileName(fileName: string): string {
     const name = parse(fileName).name.trim() || fileName;
     return name.slice(0, TITLE_MAX_LENGTH);
+  }
+
+  /** Client-provided names go into a header: keep printable ASCII, no quotes. */
+  private safeDownloadName(fileName: string): string {
+    return fileName.replace(/[^\x20-\x7e]|["\\/]/g, '_');
   }
 
   private safeExtension(fileName: string): string {

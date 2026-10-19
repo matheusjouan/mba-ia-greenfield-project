@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 15/17 completed
+**SIs:** 16/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -115,9 +115,10 @@
   - O streaming não passa pela API: o storage atende os `Range` requests direto (conforme TD-11 e o diagrama C4).
 
 ### SI-03.16 — Endpoint GET /videos/:slug/download
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 3/3 e2e passing (test/videos-download.e2e-spec.ts, gerado da spec `specs/videos-download.plan.md`: `302`, storage responde `Content-Disposition: attachment; filename="sample.mp4"` com o arquivo byte a byte idêntico); videos.service.integration-spec.ts 21/21 (3 novos de `getDownloadUrl`)
+- **Observations:**
+  - `original_filename` vem do cliente e vai para o header `Content-Disposition`: o serviço o restringe a ASCII imprimível sem aspas/barras (sem CR/LF), evitando header injection — coberto por teste de integração.
 
 ### SI-03.17 — Atualizar contrato OpenAPI e documentação de IA da fase
 - **Status:** pending

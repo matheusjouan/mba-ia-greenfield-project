@@ -413,5 +413,37 @@ describe('VideosService (integration)', () => {
         VideoNotFoundException,
       );
     });
+
+    it('signs the download URL with an attachment disposition', async () => {
+      const video = await videoWithStatus(VideoStatus.Ready);
+
+      const url = new URL(await service.getDownloadUrl(video.slug));
+
+      expect(url.searchParams.get('response-content-disposition')).toBe(
+        'attachment; filename="clip.mp4"',
+      );
+    });
+
+    it('sanitizes the client-provided file name in the disposition', async () => {
+      const video = await videoWithStatus(VideoStatus.Ready);
+      await videoRepository.update(
+        { id: video.id },
+        { original_filename: 'my "clip"\r\nX-Evil: 1/é.mp4' },
+      );
+
+      const url = new URL(await service.getDownloadUrl(video.slug));
+
+      expect(url.searchParams.get('response-content-disposition')).toBe(
+        'attachment; filename="my _clip___X-Evil: 1__.mp4"',
+      );
+    });
+
+    it('refuses to download a video that is not ready', async () => {
+      const video = await videoWithStatus(VideoStatus.Draft);
+
+      await expect(service.getDownloadUrl(video.slug)).rejects.toThrow(
+        VideoNotFoundException,
+      );
+    });
   });
 });
