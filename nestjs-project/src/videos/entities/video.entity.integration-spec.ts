@@ -1,17 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { DataSource, QueryFailedError, Repository } from 'typeorm';
-import { RefreshToken } from '../../auth/entities/refresh-token.entity';
-import { VerificationToken } from '../../auth/entities/verification-token.entity';
 import { Channel } from '../../channels/entities/channel.entity';
 import {
   cleanAllTables,
+  ALL_ENTITIES,
   createTestDataSource,
 } from '../../test/create-test-data-source';
 import { User } from '../../users/entities/user.entity';
 import { VideoStatus } from '../videos.constants';
 import { Video } from './video.entity';
-
-const ALL_ENTITIES = [User, Channel, RefreshToken, VerificationToken, Video];
 const TEN_GIB = 10737418240;
 
 describe('Video entity (integration)', () => {

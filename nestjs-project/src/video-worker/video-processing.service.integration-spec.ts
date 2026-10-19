@@ -8,8 +8,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UnrecoverableError } from 'bullmq';
 import { DataSource, Repository } from 'typeorm';
-import { RefreshToken } from '../auth/entities/refresh-token.entity';
-import { VerificationToken } from '../auth/entities/verification-token.entity';
 import { Channel } from '../channels/entities/channel.entity';
 import queueConfig from '../config/queue.config';
 import storageConfig from '../config/storage.config';
@@ -19,6 +17,7 @@ import { StorageModule } from '../storage/storage.module';
 import { StorageService } from '../storage/storage.service';
 import {
   cleanAllTables,
+  ALL_ENTITIES,
   createTestDataSource,
 } from '../test/create-test-data-source';
 import { User } from '../users/entities/user.entity';
@@ -27,8 +26,6 @@ import { VideoStatus } from '../videos/videos.constants';
 import { VideosModule } from '../videos/videos.module';
 import { MediaProbeService } from './media-probe.service';
 import { VideoProcessingService } from './video-processing.service';
-
-const ALL_ENTITIES = [User, Channel, RefreshToken, VerificationToken, Video];
 const FIXTURE = resolve(__dirname, '../../test/fixtures/sample.mp4');
 
 describe('VideoProcessingService (integration)', () => {

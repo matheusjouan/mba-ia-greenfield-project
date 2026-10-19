@@ -20,7 +20,7 @@ Fixes applied during final verification:
 
 Follow-ups (out of scope, not acted on):
 - ~~`npm run openapi:export` (ts-node) does not apply the `@nestjs/swagger` CLI plugin, so request DTO schemas are exported without properties~~ — resolved in `bugfix/openapi-export-request-schemas` (export now runs from the compiled build).
-- `ALL_ENTITIES` is duplicated across ~12 test files; a shared helper would avoid touching all of them when an entity is added.
+- ~~`ALL_ENTITIES` is duplicated across ~12 test files~~ — resolved in `feature/shared-test-entities` (single export in `src/test/create-test-data-source.ts`).
 - `ChannelsService` keeps its own unique-violation check; it could reuse `src/common/database/pg-errors.ts`.
 - The `context7` MCP server was missing from this fork's `.mcp.json` during the phase (Context7 was consulted over its HTTP API); added afterwards in `bugfix/mcp-context7`.
 
