@@ -7,7 +7,14 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -81,7 +88,16 @@
       "get": {
         "description": "Validates the confirmation token and marks the user's email as confirmed.",
         "operationId": "AuthController_confirmEmail",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "204": {
             "description": "Email confirmed successfully"
@@ -793,31 +809,126 @@
     "schemas": {
       "RegisterDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
       },
       "ResendConfirmationDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
       },
       "LoginDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
       },
       "RefreshTokenDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "refresh_token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "refresh_token"
+        ]
       },
       "ForgotPasswordDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
       },
       "ResetPasswordDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "new_password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "token",
+          "new_password"
+        ]
       },
       "CreateVideoDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "file_name": {
+            "type": "string",
+            "description": "Original name of the file being uploaded.",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "file_size": {
+            "type": "number",
+            "description": "Exact size of the file in bytes (at most 10 GiB).",
+            "minimum": 1
+          },
+          "mime_type": {
+            "type": "string",
+            "description": "MIME type of the video file.",
+            "enum": [
+              "video/mp4",
+              "video/webm",
+              "video/quicktime",
+              "video/x-matroska"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "description": "Video title; defaults to the file name without its extension.",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "file_name",
+          "file_size",
+          "mime_type"
+        ]
       },
       "UploadPartUrlDto": {
         "type": "object",
@@ -882,13 +993,13 @@
             "example": "My clip"
           },
           "status": {
-            "type": "string",
             "enum": [
               "draft",
               "processing",
               "ready",
               "failed"
             ],
+            "type": "string",
             "example": "draft"
           },
           "upload": {
@@ -974,13 +1085,13 @@
             "example": "dQw4w9WgXcQ"
           },
           "status": {
-            "type": "string",
             "enum": [
               "draft",
               "processing",
               "ready",
               "failed"
-            ]
+            ],
+            "type": "string"
           },
           "processing_error": {
             "type": "string",
@@ -1005,9 +1116,41 @@
           "upload"
         ]
       },
+      "UploadedPartInputDto": {
+        "type": "object",
+        "properties": {
+          "part_number": {
+            "type": "number",
+            "description": "Part number, as used in the presigned URL.",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "etag": {
+            "type": "string",
+            "description": "ETag header returned by the storage for this part's PUT."
+          }
+        },
+        "required": [
+          "part_number",
+          "etag"
+        ]
+      },
       "CompleteUploadDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "parts": {
+            "description": "Every uploaded part with its ETag.",
+            "minItems": 1,
+            "maxItems": 10000,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UploadedPartInputDto"
+            }
+          }
+        },
+        "required": [
+          "parts"
+        ]
       },
       "VideoSummaryResponseDto": {
         "type": "object",
@@ -1025,13 +1168,13 @@
             "example": "My clip"
           },
           "status": {
-            "type": "string",
             "enum": [
               "draft",
               "processing",
               "ready",
               "failed"
             ],
+            "type": "string",
             "example": "processing"
           }
         },
@@ -1117,13 +1260,13 @@
             "example": "My clip"
           },
           "status": {
-            "type": "string",
             "enum": [
               "draft",
               "processing",
               "ready",
               "failed"
             ],
+            "type": "string",
             "example": "ready"
           },
           "duration_seconds": {
