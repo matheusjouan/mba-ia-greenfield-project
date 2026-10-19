@@ -128,4 +128,22 @@ describe('exportSpec (integration)', () => {
       }
     }
   });
+
+  it('documents the video endpoints with their access rules', () => {
+    const paths = document.paths as Record<
+      string,
+      Record<string, { security?: unknown[] }>
+    >;
+
+    expect(paths['/videos'].post.security).toEqual([{ 'access-token': [] }]);
+    expect(paths['/videos/{slug}/upload'].get.security).toEqual([
+      { 'access-token': [] },
+    ]);
+    expect(paths['/videos/{slug}/upload/complete'].post.security).toEqual([
+      { 'access-token': [] },
+    ]);
+    expect(paths['/videos/{slug}'].get.security).toBeUndefined();
+    expect(paths['/videos/{slug}/stream'].get.security).toBeUndefined();
+    expect(paths['/videos/{slug}/download'].get.security).toBeUndefined();
+  });
 });

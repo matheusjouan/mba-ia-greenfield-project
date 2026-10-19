@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 16/17 completed
+**SIs:** 17/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -121,6 +121,11 @@
   - `original_filename` vem do cliente e vai para o header `Content-Disposition`: o serviço o restringe a ASCII imprimível sem aspas/barras (sem CR/LF), evitando header injection — coberto por teste de integração.
 
 ### SI-03.17 — Atualizar contrato OpenAPI e documentação de IA da fase
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 10/10 passing (openapi-export.integration-spec.ts, 1 novo: 6 caminhos de vídeo com `security` correto — autenticados com `access-token`, públicos sem); verificação mecânica de que todo caminho, script e serviço citados nos `CLAUDE.md` existe
+- **Observations:**
+  - `openapi.json` regerado (6 caminhos de vídeo, erros referenciando `ApiErrorEnvelope`, `302` documentado em stream/download); `api.http` com o fluxo de vídeo (passos 10–16).
+  - `CLAUDE.md` raiz: fila deixa de ser TBD (BullMQ on Redis), serviços `minio`/`minio-init`/`redis`/`video-worker`, fluxo de upload/processamento; a linha "`next-frontend/` — not yet initialized" estava desatualizada desde a Fase 02 e foi corrigida. `docs/diagrams/software-arch.mermaid`: fila `TBD` → `BullMQ on Redis`.
+  - `nestjs-project/CLAUDE.md`: verificação de prontidão dos novos serviços, scripts do worker, setup do Jest (prefixo de fila de teste), override de lint em testes e seção "Videos (Fase 03)".
+  - Testing guide (`external-systems.md`, `SKILL.md`, `artifacts/services.md`): Object Storage passa a MinIO real e Message Queue a BullMQ/Redis com prefixo de teste — resolução do IC-1 da validação.
+  - **Follow-up (pré-existente, fora do escopo):** o `npm run openapi:export` roda via `ts-node`, que não aplica o plugin CLI do `@nestjs/swagger`; os schemas de DTOs de **entrada** saem sem propriedades — inclusive `RegisterDto`/`LoginDto` no `openapi.json` versionado da Fase 02. DTOs de resposta (com `@ApiProperty`) saem completos.
