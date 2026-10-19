@@ -96,6 +96,7 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
+    "maxWorkers": 1,
     "setupFiles": [
       "<rootDir>/test/jest-setup-env.ts",
       "dotenv/config"

@@ -1,7 +1,28 @@
 # phase-03-videos — Progress
 
-**Status:** in_progress
+**Status:** completed
 **SIs:** 17/17 completed
+
+## Final verification (Definition of Done)
+
+| Check | Command (inside `nestjs-project`) | Result |
+|-------|-----------------------------------|--------|
+| Unit + integration | `docker compose exec nestjs-api npm test` | 248/248 passing, 39 suites, exit 0 |
+| E2E | `docker compose exec nestjs-api npm run test:e2e` | 80/80 passing, 9 suites, exit 0 |
+| Type-check | `docker compose exec nestjs-api npx tsc --noEmit` | exit 0 |
+| Lint | `docker compose exec nestjs-api npm run lint` | exit 0 (0 errors, 45 warnings from rules configured as `warn`) |
+| Build | `npm run build` / `npm run build:worker` | `dist/main.js` and `dist-worker/worker.js` produced |
+| Infra | `docker compose up -d` | `db`, `mailpit`, `minio` (healthy), `minio-init` (exit 0), `redis` (healthy), `video-worker` (consuming), `nestjs-api` |
+
+Fixes applied during final verification:
+- `npm test` and `npm run test:e2e` ran suites in parallel against the shared database/queue (the `--runInBand` the backend `CLAUDE.md` described as "already configured" was not in the scripts): `"maxWorkers": 1` added to both Jest configs, so the plain commands are serialized.
+- `migrations.integration-spec.ts` dropped related tables with concurrent `DROP ... CASCADE` (`Promise.all`), which failed intermittently (1 of 5 full runs) once `videos` extended the FK chain; drops are now sequential.
+
+Follow-ups (out of scope, not acted on):
+- `npm run openapi:export` (ts-node) does not apply the `@nestjs/swagger` CLI plugin, so request DTO schemas are exported without properties — pre-existing since Fase 02.
+- `ALL_ENTITIES` is duplicated across ~12 test files; a shared helper would avoid touching all of them when an entity is added.
+- `ChannelsService` keeps its own unique-violation check; it could reuse `src/common/database/pg-errors.ts`.
+- The `context7` MCP server is not configured in this fork's `.mcp.json` (Context7 was consulted over its HTTP API during this phase).
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
