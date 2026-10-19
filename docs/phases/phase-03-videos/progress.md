@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 12/17 completed
+**SIs:** 13/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -91,9 +91,15 @@
   - Os testes de compilação/integração que sobem o `BullModule`/Postgres usam o sufixo `*.integration-spec.ts` (`video-worker.module.integration-spec.ts` em vez do `video-worker.module.spec.ts` do plano). A entrega do job pela fila real (evento `failed` → `markFailed`) é exercitada no SI-03.13 e nos e2e.
 
 ### SI-03.13 — Subir o worker de vídeo como processo e serviço Compose próprios
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 3/3 passing (worker.module.integration-spec.ts: contexto sem HTTP, worker registrado na fila, vídeo com mídia ilegível → `failed` pela fila BullMQ real); e2e `app` + `videos-create` 7/7 após a extração das opções raiz. Smoke manual: upload concluído via `VideosService` no container da API (prefixo `bull`) processado pelo container `video-worker` até `ready` (3 s, 320x240, thumbnail gravado); `getWorkers()` na fila `bull` = 1.
+- **Observations:**
+  - Achado: com `autoLoadEntities`, o worker só conhecia `Video` e `Channel` e falhava ao montar a relação `Channel.user` — o `WorkerModule` importa `UsersModule`. Os testes com listas explícitas de entidades não pegavam isso; o `worker.module.integration-spec.ts` (que usa as opções raiz reais) cobre.
+  - Opções raiz extraídas para `src/config/config-module.options.ts`, `src/database/typeorm.options.ts` e `src/queues/bull-root.options.ts`, compartilhadas por `AppModule` e `WorkerModule` (um único `databaseConfig`).
+  - Saída de build do worker isolada em `dist-worker/` (`tsconfig.worker.json`), excluída de `tsconfig.json`, `tsconfig.build.json` e `.gitignore`.
+  - No Windows/Docker Desktop o watch do `nest start` não recebe eventos de arquivo do bind mount: após editar o código do worker é preciso `docker compose restart video-worker`.
+  - Parada: `docker compose stop` envia SIGTERM ao wrapper `npm`/`nest start --watch`; o encerramento gracioso do processo Nest (`enableShutdownHooks`) não foi observável nos logs desse wrapper. Jobs interrompidos são devolvidos à fila pela recuperação de *stalled jobs* do BullMQ quando o lock expira.
+  - Sessão interrompida por travamento da máquina durante o smoke; Docker reiniciado, stack e worker de pé novamente e o smoke re-executado com sucesso.
 
 ### SI-03.14 — Endpoint GET /videos/:slug
 - **Status:** pending

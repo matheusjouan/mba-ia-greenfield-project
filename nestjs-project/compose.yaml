@@ -68,6 +68,23 @@ services:
       minio:
         condition: service_healthy
 
+  # Video worker: same codebase, separate process consuming the video-processing queue
+  video-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: ["npm", "run", "start:worker:dev"]
+    volumes:
+      - .:/home/node/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
   # Queue broker for BullMQ (noeviction is required: evicted keys corrupt queues)
   redis:
     image: redis:8-alpine
