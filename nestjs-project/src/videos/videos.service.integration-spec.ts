@@ -394,5 +394,24 @@ describe('VideosService (integration)', () => {
         );
       },
     );
+
+    it('signs the stream URL of a ready video for the public endpoint', async () => {
+      const video = await videoWithStatus(VideoStatus.Ready);
+
+      const url = new URL(await service.getStreamUrl(video.slug));
+
+      expect(url.origin).toBe(
+        new URL(process.env.S3_PUBLIC_ENDPOINT ?? 'http://minio:9000').origin,
+      );
+      expect(url.pathname).toContain(video.storage_key);
+    });
+
+    it('refuses to stream a video that is not ready', async () => {
+      const video = await videoWithStatus(VideoStatus.Processing);
+
+      await expect(service.getStreamUrl(video.slug)).rejects.toThrow(
+        VideoNotFoundException,
+      );
+    });
   });
 });

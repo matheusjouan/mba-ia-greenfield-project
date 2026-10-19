@@ -6,7 +6,9 @@ import {
   HttpStatus,
   Param,
   Post,
+  Redirect,
 } from '@nestjs/common';
+import type { HttpRedirectResponse } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -184,5 +186,30 @@ export class VideosController {
   })
   async findOne(@Param('slug') slug: string): Promise<VideoResponseDto> {
     return VideoResponseDto.from(await this.videosService.getPublicVideo(slug));
+  }
+
+  @Public()
+  @Get(':slug/stream')
+  @Redirect()
+  @ApiOperation({
+    summary: 'Stream a video',
+    description:
+      'Redirects to a short-lived presigned URL of the video file. The object storage answers ' +
+      'Range requests with 206 Partial Content, so playback starts without a full download.',
+  })
+  @ApiResponse({
+    status: 302,
+    description: 'Redirect to the presigned video URL (Location header)',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Unknown slug or video not ready (VIDEO_NOT_FOUND)',
+    schema: { $ref: getSchemaPath(ApiErrorEnvelope) },
+  })
+  async stream(@Param('slug') slug: string): Promise<HttpRedirectResponse> {
+    return {
+      url: await this.videosService.getStreamUrl(slug),
+      statusCode: HttpStatus.FOUND,
+    };
   }
 }

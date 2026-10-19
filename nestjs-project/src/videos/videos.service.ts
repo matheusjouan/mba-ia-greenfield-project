@@ -216,6 +216,18 @@ export class VideosService {
     };
   }
 
+  /**
+   * Short-lived presigned URL of the source: the object storage serves HTTP
+   * Range requests (206 Partial Content), so playback never needs a full download.
+   */
+  async getStreamUrl(slug: string): Promise<string> {
+    const video = await this.findReadyBySlug(slug);
+    return this.storageService.presignGetObject(video.storage_key, {
+      endpoint: 'public',
+      expiresIn: this.config.playbackUrlExpirationSeconds,
+    });
+  }
+
   async findReadyBySlug(slug: string): Promise<Video> {
     const video = await this.videoRepository.findOne({
       where: { slug, status: VideoStatus.Ready },

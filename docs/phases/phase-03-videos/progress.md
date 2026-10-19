@@ -1,7 +1,7 @@
 # phase-03-videos — Progress
 
 **Status:** in_progress
-**SIs:** 14/17 completed
+**SIs:** 15/17 completed
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
 - **Status:** completed
@@ -109,9 +109,10 @@
   - Helpers de e2e ampliados: `startInProcessWorker` (contexto `WorkerModule` no processo de teste, prefixo de fila de teste), `uploadFixture` e `waitForVideoStatus`. O `beforeAll` que sobe API + worker precisa de timeout maior (60 s) que o padrão de 5 s do Jest neste bind mount do Windows — sem isso o teardown no meio do boot gera erros enganosos de `ioredis`.
 
 ### SI-03.15 — Endpoint GET /videos/:slug/stream
-- **Status:** pending
-- **Tests:** pending
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 4/4 e2e passing (test/videos-stream.e2e-spec.ts, gerado da spec `specs/videos-stream.plan.md`: `302` para URL pré-assinada; `Range` inicial e no meio do arquivo → `206` com `Content-Range` e bytes idênticos ao fixture); videos.service.integration-spec.ts 18/18 (2 novos de `getStreamUrl`)
+- **Observations:**
+  - O streaming não passa pela API: o storage atende os `Range` requests direto (conforme TD-11 e o diagrama C4).
 
 ### SI-03.16 — Endpoint GET /videos/:slug/download
 - **Status:** pending
