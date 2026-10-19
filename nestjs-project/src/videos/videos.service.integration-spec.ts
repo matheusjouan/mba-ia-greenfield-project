@@ -6,8 +6,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Queue } from 'bullmq';
 import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { RefreshToken } from '../auth/entities/refresh-token.entity';
-import { VerificationToken } from '../auth/entities/verification-token.entity';
 import { Channel } from '../channels/entities/channel.entity';
 import {
   InvalidUploadPartsException,
@@ -25,6 +23,7 @@ import { VIDEO_PROCESSING_QUEUE } from '../queues/queues.constants';
 import { StorageService } from '../storage/storage.service';
 import {
   cleanAllTables,
+  ALL_ENTITIES,
   createTestDataSource,
 } from '../test/create-test-data-source';
 import { User } from '../users/entities/user.entity';
@@ -32,8 +31,6 @@ import { Video } from './entities/video.entity';
 import { VideoStatus } from './videos.constants';
 import { VideosModule } from './videos.module';
 import { VideosService } from './videos.service';
-
-const ALL_ENTITIES = [User, Channel, RefreshToken, VerificationToken, Video];
 const MIB = 1024 * 1024;
 const PART_SIZE = 5 * MIB;
 

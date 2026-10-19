@@ -201,7 +201,7 @@ Testing notes:
 - Storage, queue and FFmpeg are exercised for real (MinIO, Redis and the binaries in the `nestjs-api` image) — do not mock them in integration/e2e tests. The fixture `test/fixtures/sample.mp4` (3 s, 320x240, H.264 + AAC) feeds media tests.
 - Video e2e tests share `test/helpers/videos-e2e.ts`: app bootstrap with the `main.ts` pipe/filters, login through the auth endpoints, direct part uploads, an in-process worker (`startInProcessWorker`) and `waitForVideoStatus`. Hooks that boot API + worker need a `60_000` timeout.
 - Override video limits with `overrideProvider(videoConfig.KEY)` (e.g., 5 MiB parts) — never by mutating `process.env`, which leaks across files under `--runInBand`.
-- With `autoLoadEntities`, a module graph only knows entities registered by imported modules: test data sources must list `Video` alongside `Channel`, and `WorkerModule` imports `UsersModule` because `Channel` references `User`.
+- Test data sources use the shared `ALL_ENTITIES` from `src/test/create-test-data-source.ts` (add every new entity there). With `autoLoadEntities`, a module graph only knows entities registered by imported modules: `WorkerModule` imports `UsersModule` because `Channel` references `User`.
 - E2E scenarios are specified in `nestjs-project/specs/videos-*.plan.md` (one spec per endpoint → one `test/videos-*.e2e-spec.ts`).
 
 ## Code Conventions

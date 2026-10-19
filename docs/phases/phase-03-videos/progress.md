@@ -19,9 +19,9 @@ Fixes applied during final verification:
 - `migrations.integration-spec.ts` dropped related tables with concurrent `DROP ... CASCADE` (`Promise.all`), which failed intermittently (1 of 5 full runs) once `videos` extended the FK chain; drops are now sequential.
 
 Follow-ups (out of scope, not acted on):
-- `npm run openapi:export` (ts-node) does not apply the `@nestjs/swagger` CLI plugin, so request DTO schemas are exported without properties — pre-existing since Fase 02.
-- `ALL_ENTITIES` is duplicated across ~12 test files; a shared helper would avoid touching all of them when an entity is added.
-- `ChannelsService` keeps its own unique-violation check; it could reuse `src/common/database/pg-errors.ts`.
+- ~~`npm run openapi:export` (ts-node) does not apply the `@nestjs/swagger` CLI plugin, so request DTO schemas are exported without properties~~ — resolved in `bugfix/openapi-export-request-schemas` (export now runs from the compiled build).
+- ~~`ALL_ENTITIES` is duplicated across ~12 test files~~ — resolved in `feature/shared-test-entities` (single export in `src/test/create-test-data-source.ts`).
+- ~~`ChannelsService` keeps its own unique-violation check~~ — resolved in `feature/channels-shared-unique-check` (now uses `src/common/database/pg-errors.ts`).
 - The `context7` MCP server was missing from this fork's `.mcp.json` during the phase (Context7 was consulted over its HTTP API); added afterwards in `bugfix/mcp-context7`.
 
 ### SI-03.1 — Instalar dependências e namespaces de configuração da fase
@@ -149,4 +149,4 @@ Follow-ups (out of scope, not acted on):
   - `CLAUDE.md` raiz: fila deixa de ser TBD (BullMQ on Redis), serviços `minio`/`minio-init`/`redis`/`video-worker`, fluxo de upload/processamento; a linha "`next-frontend/` — not yet initialized" estava desatualizada desde a Fase 02 e foi corrigida. `docs/diagrams/software-arch.mermaid`: fila `TBD` → `BullMQ on Redis`.
   - `nestjs-project/CLAUDE.md`: verificação de prontidão dos novos serviços, scripts do worker, setup do Jest (prefixo de fila de teste), override de lint em testes e seção "Videos (Fase 03)".
   - Testing guide (`external-systems.md`, `SKILL.md`, `artifacts/services.md`): Object Storage passa a MinIO real e Message Queue a BullMQ/Redis com prefixo de teste — resolução do IC-1 da validação.
-  - **Follow-up (pré-existente, fora do escopo):** o `npm run openapi:export` roda via `ts-node`, que não aplica o plugin CLI do `@nestjs/swagger`; os schemas de DTOs de **entrada** saem sem propriedades — inclusive `RegisterDto`/`LoginDto` no `openapi.json` versionado da Fase 02. DTOs de resposta (com `@ApiProperty`) saem completos.
+  - **Follow-up (pré-existente, fora do escopo):** o `npm run openapi:export` roda via `ts-node`, que não aplica o plugin CLI do `@nestjs/swagger`; os schemas de DTOs de **entrada** saem sem propriedades — inclusive `RegisterDto`/`LoginDto` no `openapi.json` versionado da Fase 02. DTOs de resposta (com `@ApiProperty`) saem completos. _Resolvido depois em `bugfix/openapi-export-request-schemas`._
